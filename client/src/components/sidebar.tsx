@@ -10,7 +10,8 @@ import {
   Wallet, 
   Calendar, 
   Users,
-  LogOut
+  LogOut,
+  Shield
 } from "lucide-react";
 
 const navigationItems = [
@@ -54,6 +55,15 @@ const navigationItems = [
     name: "Customer Tickets",
     href: "/customer-tickets", 
     icon: Ticket,
+  },
+];
+
+const adminNavigationItems = [
+  {
+    name: "Admin Panel",
+    href: "/admin-panel",
+    icon: Shield,
+    adminOnly: true,
   },
 ];
 
@@ -103,12 +113,37 @@ export function Sidebar() {
             </a>
           );
         })}
+        
+        {/* Admin-only navigation */}
+        {user && 'role' in user && user.role === 'admin' && (
+          <div className="mt-6 border-t border-gray-600 pt-6">
+            {adminNavigationItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location === item.href;
+
+              return (
+                <a
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors",
+                    isActive && "text-white bg-rosae-red/20 border-r-4 border-rosae-red"
+                  )}
+                  data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
+                >
+                  <Icon className="mr-3 w-5 h-5" />
+                  {item.name}
+                </a>
+              );
+            })}
+          </div>
+        )}
       </nav>
 
       {/* User Profile Section */}
       <div className="p-6 border-t border-gray-600">
         <div className="flex items-center space-x-3">
-          {user?.profileImageUrl ? (
+          {user && 'profileImageUrl' in user && user.profileImageUrl ? (
             <img 
               src={user.profileImageUrl} 
               alt="User Avatar" 
@@ -122,13 +157,13 @@ export function Sidebar() {
           )}
           <div className="flex-1">
             <p className="text-sm font-medium text-white" data-testid="text-user-name">
-              {user?.firstName || user?.lastName ? 
+              {user && 'firstName' in user && 'lastName' in user && (user.firstName || user.lastName) ? 
                 `${user.firstName || ''} ${user.lastName || ''}`.trim() : 
                 'User'
               }
             </p>
             <p className="text-xs text-gray-400" data-testid="text-user-role">
-              {user?.role === 'admin' ? 'Admin' : 'Employee'}
+              {user && 'role' in user && user.role === 'admin' ? 'Admin' : 'Employee'}
             </p>
           </div>
           <button 

@@ -62,10 +62,7 @@ function CreateTicketModal({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: 
       };
       delete ticketData.imageFile;
 
-      return await apiRequest("/api/customer-tickets", {
-        method: "POST",
-        body: JSON.stringify(ticketData),
-      });
+      return await apiRequest("POST", "/api/customer-tickets", ticketData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customer-tickets"] });
@@ -266,10 +263,7 @@ export default function CustomerTickets() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status, assignedTo }: { id: string; status: string; assignedTo?: string }) => {
-      return await apiRequest(`/api/customer-tickets/${id}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ status, assignedTo }),
-      });
+      return await apiRequest("PATCH", `/api/customer-tickets/${id}/status`, { status, assignedTo });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/customer-tickets"] });

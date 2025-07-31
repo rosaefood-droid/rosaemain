@@ -66,10 +66,7 @@ export default function Expenses() {
 
   const createExpenseMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest("/api/expenses", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("POST", "/api/expenses", data);
     },
     onSuccess: () => {
       toast({
