@@ -11,25 +11,33 @@ import Analytics from "@/pages/analytics";
 import Expenses from "@/pages/expenses";
 import LeaveManagement from "@/pages/leave-management";
 import UserManagement from "@/pages/user-management";
+import CustomerTickets from "@/pages/customer-tickets";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Landing />;
+  }
+
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Landing} />
-      ) : (
-        <>
-          <Route path="/" component={Dashboard} />
-          <Route path="/bookings" component={Bookings} />
-          <Route path="/analytics" component={Analytics} />
-          <Route path="/expenses" component={Expenses} />
-          <Route path="/leave-management" component={LeaveManagement} />
-          <Route path="/user-management" component={UserManagement} />
-        </>
-      )}
+      <Route path="/" component={Dashboard} />
+      <Route path="/bookings" component={Bookings} />
+      <Route path="/analytics" component={Analytics} />
+      <Route path="/expenses" component={Expenses} />
+      <Route path="/leave-management" component={LeaveManagement} />
+      <Route path="/user-management" component={UserManagement} />
+      <Route path="/customer-tickets" component={CustomerTickets} />
       <Route component={NotFound} />
     </Switch>
   );

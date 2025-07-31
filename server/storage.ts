@@ -4,6 +4,9 @@ import {
   expenses,
   leaveApplications,
   activityLogs,
+  customerTickets,
+  calendarEvents,
+  salesReports,
   type User,
   type UpsertUser,
   type InsertBooking,
@@ -13,6 +16,12 @@ import {
   type InsertLeaveApplication,
   type LeaveApplication,
   type ActivityLog,
+  type InsertCustomerTicket,
+  type CustomerTicket,
+  type InsertCalendarEvent,
+  type CalendarEvent,
+  type InsertSalesReport,
+  type SalesReport,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
@@ -26,16 +35,35 @@ export interface IStorage {
   createBooking(booking: InsertBooking): Promise<Booking>;
   getAllBookings(limit?: number): Promise<Booking[]>;
   getBookingsByDateRange(startDate: string, endDate: string): Promise<Booking[]>;
+  updateBooking(id: string, booking: Partial<InsertBooking>): Promise<Booking>;
+  deleteBooking(id: string): Promise<void>;
   
   // Expense operations
   createExpense(expense: InsertExpense): Promise<Expense>;
   getAllExpenses(limit?: number): Promise<Expense[]>;
   getExpensesByDateRange(startDate: string, endDate: string): Promise<Expense[]>;
+  getExpensesByCategory(category: string): Promise<Expense[]>;
   
   // Leave operations
   createLeaveApplication(leave: InsertLeaveApplication): Promise<LeaveApplication>;
   getLeaveApplications(): Promise<LeaveApplication[]>;
   updateLeaveStatus(id: string, status: string, reviewedBy: string): Promise<LeaveApplication>;
+  
+  // Customer ticket operations
+  createCustomerTicket(ticket: InsertCustomerTicket): Promise<CustomerTicket>;
+  getAllCustomerTickets(): Promise<CustomerTicket[]>;
+  updateTicketStatus(id: string, status: string, assignedTo?: string): Promise<CustomerTicket>;
+  
+  // Calendar event operations
+  createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
+  updateCalendarEvent(id: string, event: Partial<InsertCalendarEvent>): Promise<CalendarEvent>;
+  deleteCalendarEvent(bookingId: string): Promise<void>;
+  getCalendarEventByBookingId(bookingId: string): Promise<CalendarEvent | undefined>;
+  
+  // Sales report operations
+  createSalesReport(report: InsertSalesReport): Promise<SalesReport>;
+  getSalesReports(startDate: string, endDate: string): Promise<SalesReport[]>;
+  generateDailySalesReport(date: string): Promise<SalesReport>;
   
   // Analytics operations
   getDailyRevenue(days: number): Promise<Array<{ date: string; revenue: number; bookings: number }>>;
@@ -70,7 +98,15 @@ export class DatabaseStorage implements IStorage {
   async createBooking(booking: InsertBooking): Promise<Booking> {
     const [newBooking] = await db
       .insert(bookings)
-      .values(booking)
+      .values({
+        ...booking,
+        totalAmount: booking.totalAmount.toString(),
+        cashAmount: booking.cashAmount.toString(),
+        upiAmount: booking.upiAmount.toString(),
+        snacksAmount: booking.snacksAmount?.toString() || "0",
+        snacksCash: booking.snacksCash?.toString() || "0",
+        snacksUpi: booking.snacksUpi?.toString() || "0",
+      })
       .returning();
     return newBooking;
   }
@@ -99,7 +135,10 @@ export class DatabaseStorage implements IStorage {
   async createExpense(expense: InsertExpense): Promise<Expense> {
     const [newExpense] = await db
       .insert(expenses)
-      .values(expense)
+      .values({
+        ...expense,
+        amount: expense.amount.toString(),
+      })
       .returning();
     return newExpense;
   }
@@ -202,6 +241,146 @@ export class DatabaseStorage implements IStorage {
       bookings: Number(row.bookings),
       revenue: Number(row.revenue),
     }));
+  }
+
+  async updateBooking(id: string, booking: Partial<InsertBooking>): Promise<Booking> {
+    const updateData: any = { ...booking };
+    
+    // Convert numbers to strings for decimal fields
+    if (updateData.totalAmount !== undefined) updateData.totalAmount = updateData.totalAmount.toString();
+    if (updateData.cashAmount !== undefined) updateData.cashAmount = updateData.cashAmount.toString();
+    if (updateData.upiAmount !== undefined) updateData.upiAmount = updateData.upiAmount.toString();
+    if (updateData.snacksAmount !== undefined) updateData.snacksAmount = updateData.snacksAmount.toString();
+    if (updateData.snacksCash !== undefined) updateData.snacksCash = updateData.snacksCash.toString();
+    if (updateData.snacksUpi !== undefined) updateData.snacksUpi = updateData.snacksUpi.toString();
+    
+    const [updated] = await db
+      .update(bookings)
+      .set(updateData)
+      .where(eq(bookings.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBooking(id: string): Promise<void> {
+    await db.delete(bookings).where(eq(bookings.id, id));
+  }
+
+  async getExpensesByCategory(category: string): Promise<Expense[]> {
+    return await db
+      .select()
+      .from(expenses)
+      .where(eq(expenses.category, category))
+      .orderBy(desc(expenses.expenseDate));
+  }
+
+  async createCustomerTicket(ticket: InsertCustomerTicket): Promise<CustomerTicket> {
+    const [newTicket] = await db
+      .insert(customerTickets)
+      .values(ticket)
+      .returning();
+    return newTicket;
+  }
+
+  async getAllCustomerTickets(): Promise<CustomerTicket[]> {
+    return await db
+      .select()
+      .from(customerTickets)
+      .orderBy(desc(customerTickets.createdAt));
+  }
+
+  async updateTicketStatus(id: string, status: string, assignedTo?: string): Promise<CustomerTicket> {
+    const [updated] = await db
+      .update(customerTickets)
+      .set({
+        status,
+        assignedTo,
+        updatedAt: new Date(),
+      })
+      .where(eq(customerTickets.id, id))
+      .returning();
+    return updated;
+  }
+
+  async createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent> {
+    const [newEvent] = await db
+      .insert(calendarEvents)
+      .values(event)
+      .returning();
+    return newEvent;
+  }
+
+  async updateCalendarEvent(id: string, event: Partial<InsertCalendarEvent>): Promise<CalendarEvent> {
+    const [updated] = await db
+      .update(calendarEvents)
+      .set({
+        ...event,
+        updatedAt: new Date(),
+      })
+      .where(eq(calendarEvents.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteCalendarEvent(bookingId: string): Promise<void> {
+    await db.delete(calendarEvents).where(eq(calendarEvents.bookingId, bookingId));
+  }
+
+  async getCalendarEventByBookingId(bookingId: string): Promise<CalendarEvent | undefined> {
+    const [event] = await db
+      .select()
+      .from(calendarEvents)
+      .where(eq(calendarEvents.bookingId, bookingId));
+    return event;
+  }
+
+  async createSalesReport(report: InsertSalesReport): Promise<SalesReport> {
+    const [newReport] = await db
+      .insert(salesReports)
+      .values(report)
+      .returning();
+    return newReport;
+  }
+
+  async getSalesReports(startDate: string, endDate: string): Promise<SalesReport[]> {
+    return await db
+      .select()
+      .from(salesReports)
+      .where(
+        and(
+          gte(salesReports.reportDate, startDate),
+          lte(salesReports.reportDate, endDate)
+        )
+      )
+      .orderBy(desc(salesReports.reportDate));
+  }
+
+  async generateDailySalesReport(date: string): Promise<SalesReport> {
+    // Calculate daily totals from bookings
+    const [totals] = await db
+      .select({
+        totalRevenue: sql<number>`COALESCE(SUM(CAST(${bookings.totalAmount} AS NUMERIC)), 0)`,
+        foodSales: sql<number>`COALESCE(SUM(CAST(${bookings.snacksAmount} AS NUMERIC)), 0)`,
+        screenSales: sql<number>`COALESCE(SUM(CAST(${bookings.totalAmount} AS NUMERIC) - CAST(${bookings.snacksAmount} AS NUMERIC)), 0)`,
+        totalBookings: sql<number>`COALESCE(COUNT(*), 0)`,
+        totalGuests: sql<number>`COALESCE(SUM(${bookings.guests}), 0)`,
+      })
+      .from(bookings)
+      .where(eq(bookings.bookingDate, date));
+
+    const avgBookingValue = totals.totalBookings > 0 ? totals.totalRevenue / totals.totalBookings : 0;
+
+    const reportData = {
+      reportDate: date,
+      totalRevenue: totals.totalRevenue.toString(),
+      foodSales: totals.foodSales.toString(),
+      screenSales: totals.screenSales.toString(),
+      totalBookings: totals.totalBookings,
+      totalGuests: totals.totalGuests,
+      avgBookingValue: avgBookingValue.toString(),
+    };
+
+    return await this.createSalesReport(reportData);
   }
 
   async logActivity(userId: string, action: string, resourceType: string, resourceId?: string, details?: string): Promise<void> {

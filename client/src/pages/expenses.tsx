@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import Layout from "@/components/layout";
+import { Sidebar } from "@/components/sidebar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, IndianRupee, Calendar, Tag } from "lucide-react";
+import { Plus, IndianRupee, Calendar, Tag, Download, Printer } from "lucide-react";
 import { insertExpenseSchema } from "@shared/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -62,23 +62,14 @@ export default function Expenses() {
 
   const { data: expenses, isLoading: isExpensesLoading } = useQuery({
     queryKey: ["/api/expenses"],
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-      }
-    },
   });
 
   const createExpenseMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest("POST", "/api/expenses", data);
+      return await apiRequest("/api/expenses", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
     },
     onSuccess: () => {
       toast({
@@ -113,13 +104,43 @@ export default function Expenses() {
     createExpenseMutation.mutate(data);
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-rosae-black flex items-center justify-center">
-        <div className="text-white text-lg">Loading...</div>
-      </div>
-    );
-  }
+  const handleExport = async (category?: string) => {
+    try {
+      const params = category ? `?category=${category}` : '';
+      const response = await fetch(`/api/expenses/export${params}`, {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `expenses${category ? `_${category}` : ''}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        toast({
+          title: "Success",
+          description: "Expenses exported successfully",
+        });
+      } else {
+        throw new Error('Export failed');
+      }
+    } catch (error) {
+      toast({
+        title: "Error", 
+        description: "Failed to export expenses",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
 
   const formatCurrency = (value: number) => {
     return `₹${value.toLocaleString('en-IN')}`;
@@ -128,6 +149,14 @@ export default function Expenses() {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-IN');
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-rosae-black flex items-center justify-center">
+        <div className="text-white text-lg">Loading...</div>
+      </div>
+    );
+  }
 
   // Calculate total expenses
   const totalExpenses = expenses?.reduce((sum: number, expense: any) => sum + Number(expense.amount), 0) || 0;
@@ -143,7 +172,9 @@ export default function Expenses() {
   }, {}) || {};
 
   return (
-    <Layout>
+    <div className="flex min-h-screen bg-rosae-black">
+      <Sidebar />
+      <div className="flex-1">
       <div className="p-6">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -392,6 +423,7 @@ export default function Expenses() {
           </CardContent>
         </Card>
       </div>
-    </Layout>
+      </div>
+    </div>
   );
 }

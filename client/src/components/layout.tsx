@@ -1,21 +1,18 @@
-import { ReactNode } from "react";
-import Sidebar from "./sidebar";
-import Header from "./header";
+import { Sidebar } from "@/components/sidebar";
 
 interface LayoutProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
-export default function Layout({ children }: LayoutProps) {
+export function Layout({ children }: LayoutProps) {
   return (
-    <div className="flex h-screen bg-rosae-black">
+    <div className="flex min-h-screen bg-rosae-black">
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
-      </div>
+      <main className="flex-1">
+        {children}
+      </main>
     </div>
   );
 }
+
+export default Layout;

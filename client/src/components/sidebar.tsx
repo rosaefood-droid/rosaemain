@@ -50,9 +50,14 @@ const navigationItems = [
     href: "/user-management",
     icon: Users,
   },
+  {
+    name: "Customer Tickets",
+    href: "/customer-tickets", 
+    icon: Ticket,
+  },
 ];
 
-export default function Sidebar() {
+export function Sidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
 
