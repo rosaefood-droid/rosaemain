@@ -1,0 +1,519 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROSAE - Theatre Management Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'rosae-red': '#DC2626',
+                        'rosae-dark-red': '#B91C1C',
+                        'rosae-black': '#111827',
+                        'rosae-dark-gray': '#1F2937'
+                    },
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-rosae-black text-white font-inter">
+    <!-- @COMPONENT: MainLayout -->
+    <div class="flex h-screen bg-rosae-black">
+        <!-- @COMPONENT: Sidebar -->
+        <div class="w-64 bg-rosae-dark-gray shadow-xl">
+            <div class="p-6 border-b border-gray-600">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-rosae-red rounded-lg flex items-center justify-center">
+                        <i class="fas fa-theater-masks text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-white">ROSAE</h1>
+                        <p class="text-gray-400 text-sm">Theatre Management</p>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="mt-6">
+                <!-- @STATE: activeTab:string = 'dashboard' -->
+                <a href="#" class="flex items-center px-6 py-3 text-white bg-rosae-red/20 border-r-4 border-rosae-red">
+                    <i class="fas fa-chart-line mr-3"></i>
+                    Dashboard
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-plus-circle mr-3"></i>
+                    New Booking
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-ticket-alt mr-3"></i>
+                    All Bookings
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-chart-pie mr-3"></i>
+                    Analytics
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-wallet mr-3"></i>
+                    Expenses
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-calendar-alt mr-3"></i>
+                    Leave Management
+                </a>
+                <a href="#" class="flex items-center px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors">
+                    <i class="fas fa-users mr-3"></i>
+                    User Management
+                </a>
+            </nav>
+
+            <div class="absolute bottom-0 w-64 p-6 border-t border-gray-600">
+                <div class="flex items-center space-x-3">
+                    <!-- Profile image that may not be square -->
+                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=100&h=100" 
+                         alt="User Avatar" 
+                         class="w-10 h-10 rounded-full object-cover">
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-white" data-bind="user.name">John Doe</p>
+                        <p class="text-xs text-gray-400" data-bind="user.role">Admin</p>
+                    </div>
+                    <button class="text-gray-400 hover:text-white">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: Sidebar -->
+
+        <!-- @COMPONENT: MainContent -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- @COMPONENT: Header -->
+            <header class="bg-rosae-dark-gray shadow-sm border-b border-gray-600">
+                <div class="px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-2xl font-bold text-white">Dashboard Overview</h2>
+                            <p class="text-gray-400">Welcome back, manage your theatre operations</p>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <button class="bg-rosae-red hover:bg-rosae-dark-red px-6 py-2 rounded-lg font-medium transition-colors" 
+                                    data-event="click:openBookingModal">
+                                <i class="fas fa-plus mr-2"></i>
+                                Quick Booking
+                            </button>
+                            <button class="relative p-2 text-gray-400 hover:text-white">
+                                <i class="fas fa-bell text-xl"></i>
+                                <span class="absolute -top-1 -right-1 bg-rosae-red text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <!-- @END_COMPONENT: Header -->
+
+            <!-- @COMPONENT: DashboardContent -->
+            <main class="flex-1 overflow-y-auto p-6">
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-rosae-dark-gray rounded-xl p-6 border border-gray-600">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-400 text-sm">Today's Revenue</p>
+                                <p class="text-3xl font-bold text-white" data-bind="stats.todayRevenue">₹45,230</p>
+                                <p class="text-green-400 text-sm mt-1">
+                                    <i class="fas fa-arrow-up mr-1"></i>
+                                    +12.5% from yesterday
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 bg-rosae-red/20 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-rupee-sign text-rosae-red text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-rosae-dark-gray rounded-xl p-6 border border-gray-600">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-400 text-sm">Total Bookings</p>
+                                <p class="text-3xl font-bold text-white" data-bind="stats.totalBookings">127</p>
+                                <p class="text-green-400 text-sm mt-1">
+                                    <i class="fas fa-arrow-up mr-1"></i>
+                                    +8 from yesterday
+                                </p>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-ticket-alt text-blue-400 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-rosae-dark-gray rounded-xl p-6 border border-gray-600">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-400 text-sm">Cash Payments</p>
+                                <p class="text-3xl font-bold text-white" data-bind="stats.cashPayments">₹28,450</p>
+                                <p class="text-gray-400 text-sm mt-1">62.9% of total</p>
+                            </div>
+                            <div class="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-money-bill-wave text-green-400 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-rosae-dark-gray rounded-xl p-6 border border-gray-600">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-400 text-sm">UPI Payments</p>
+                                <p class="text-3xl font-bold text-white" data-bind="stats.upiPayments">₹16,780</p>
+                                <p class="text-gray-400 text-sm mt-1">37.1% of total</p>
+                            </div>
+                            <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-credit-card text-purple-400 text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <!-- Daily Revenue Chart -->
+                    <div class="bg-rosae-dark-gray rounded-xl p-6 border border-gray-600">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xl font-semibold text-white">Daily Revenue</h3>
+                            <div class="flex space-x-2">
+                                <button class="px-3 py-1 bg-rosae-red text-white rounded-md text-sm">7D</button>
+                                <button class="px-3 py-1 bg-gray-600 text-gray-300 rounded-md text-sm hover:bg-gray-500">30D</button>
+                            </div>
+                        </div>
+                        <div class="h-64">
+                            <canvas id="dailyRevenueChart" data-implementation="Chart.js bar chart showing daily revenue data"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Payment Methods Pie Chart -->
+                    <div class="bg-rosae-dark-gray rounded-xl p-6 border border-gray-600">
+                        <h3 class="text-xl font-semibold text-white mb-6">Payment Methods</h3>
+                        <div class="h-64">
+                            <canvas id="paymentMethodsChart" data-implementation="Chart.js pie chart showing cash vs UPI payments"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Bookings & Time Slot Performance -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Recent Bookings -->
+                    <div class="lg:col-span-2 bg-rosae-dark-gray rounded-xl p-6 border border-gray-600">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xl font-semibold text-white">Recent Bookings</h3>
+                            <button class="text-rosae-red hover:text-rosae-dark-red">View All</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="text-left text-gray-400 text-sm border-b border-gray-600">
+                                        <th class="pb-3">Theatre</th>
+                                        <th class="pb-3">Time</th>
+                                        <th class="pb-3">Guests</th>
+                                        <th class="pb-3">Amount</th>
+                                        <th class="pb-3">Payment</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-white">
+                                    <!-- @MAP: recentBookings.map(booking => ( -->
+                                    <tr class="border-b border-gray-700">
+                                        <td class="py-3" data-bind="booking.theatre">Screen 1</td>
+                                        <td class="py-3 text-gray-300" data-bind="booking.timeSlot">2:30 PM</td>
+                                        <td class="py-3" data-bind="booking.guests">4</td>
+                                        <td class="py-3 font-medium" data-bind="booking.totalAmount">₹1,200</td>
+                                        <td class="py-3">
+                                            <span class="px-2 py-1 bg-green-600/20 text-green-400 rounded-full text-xs" data-bind="booking.paymentMethod">Cash</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="border-b border-gray-700">
+                                        <td class="py-3" data-bind="booking.theatre">Screen 2</td>
+                                        <td class="py-3 text-gray-300" data-bind="booking.timeSlot">5:00 PM</td>
+                                        <td class="py-3" data-bind="booking.guests">2</td>
+                                        <td class="py-3 font-medium" data-bind="booking.totalAmount">₹600</td>
+                                        <td class="py-3">
+                                            <span class="px-2 py-1 bg-purple-600/20 text-purple-400 rounded-full text-xs" data-bind="booking.paymentMethod">UPI</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="border-b border-gray-700">
+                                        <td class="py-3" data-bind="booking.theatre">Screen 1</td>
+                                        <td class="py-3 text-gray-300" data-bind="booking.timeSlot">8:15 PM</td>
+                                        <td class="py-3" data-bind="booking.guests">6</td>
+                                        <td class="py-3 font-medium" data-bind="booking.totalAmount">₹1,800</td>
+                                        <td class="py-3">
+                                            <span class="px-2 py-1 bg-green-600/20 text-green-400 rounded-full text-xs" data-bind="booking.paymentMethod">Mixed</span>
+                                        </td>
+                                    </tr>
+                                    <!-- @END_MAP )) -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Time Slot Performance -->
+                    <div class="bg-rosae-dark-gray rounded-xl p-6 border border-gray-600">
+                        <h3 class="text-xl font-semibold text-white mb-6">Time Slot Performance</h3>
+                        <div class="space-y-4">
+                            <!-- @MAP: timeSlots.map(slot => ( -->
+                            <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                                <div>
+                                    <p class="text-white font-medium" data-bind="slot.time">2:30 PM</p>
+                                    <p class="text-gray-400 text-sm" data-bind="slot.bookings">15 bookings</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-white font-medium" data-bind="slot.revenue">₹4,500</p>
+                                    <div class="w-16 bg-gray-700 rounded-full h-2 mt-1">
+                                        <div class="bg-rosae-red h-2 rounded-full" style="width: 75%" data-bind="slot.occupancy"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                                <div>
+                                    <p class="text-white font-medium" data-bind="slot.time">5:00 PM</p>
+                                    <p class="text-gray-400 text-sm" data-bind="slot.bookings">22 bookings</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-white font-medium" data-bind="slot.revenue">₹6,600</p>
+                                    <div class="w-16 bg-gray-700 rounded-full h-2 mt-1">
+                                        <div class="bg-rosae-red h-2 rounded-full" style="width: 92%" data-bind="slot.occupancy"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                                <div>
+                                    <p class="text-white font-medium" data-bind="slot.time">8:15 PM</p>
+                                    <p class="text-gray-400 text-sm" data-bind="slot.bookings">18 bookings</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-white font-medium" data-bind="slot.revenue">₹5,400</p>
+                                    <div class="w-16 bg-gray-700 rounded-full h-2 mt-1">
+                                        <div class="bg-rosae-red h-2 rounded-full" style="width: 80%" data-bind="slot.occupancy"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- @END_MAP )) -->
+                        </div>
+                    </div>
+                </div>
+            </main>
+            <!-- @END_COMPONENT: DashboardContent -->
+        </div>
+        <!-- @END_COMPONENT: MainContent -->
+    </div>
+    <!-- @END_COMPONENT: MainLayout -->
+
+    <!-- @COMPONENT: BookingModal -->
+    <!-- @STATE: isBookingModalOpen:boolean = false -->
+    <div id="bookingModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden z-50" data-implementation="Modal visibility controlled by isBookingModalOpen state">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-rosae-dark-gray rounded-xl shadow-2xl w-full max-w-2xl border border-gray-600">
+                <div class="flex items-center justify-between p-6 border-b border-gray-600">
+                    <h3 class="text-2xl font-bold text-white">New Theatre Booking</h3>
+                    <button class="text-gray-400 hover:text-white text-2xl" data-event="click:closeBookingModal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <form class="p-6 space-y-6" data-event="submit:handleBookingSubmit">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Theatre Name</label>
+                            <select class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white focus:border-rosae-red focus:ring-2 focus:ring-rosae-red/20 focus:outline-none">
+                                <option>Screen 1</option>
+                                <option>Screen 2</option>
+                                <option>Screen 3</option>
+                                <option>VIP Screen</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Time Slot</label>
+                            <select class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white focus:border-rosae-red focus:ring-2 focus:ring-rosae-red/20 focus:outline-none">
+                                <option>2:30 PM</option>
+                                <option>5:00 PM</option>
+                                <option>8:15 PM</option>
+                                <option>11:00 PM</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Number of Guests</label>
+                            <input type="number" min="1" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white focus:border-rosae-red focus:ring-2 focus:ring-rosae-red/20 focus:outline-none" placeholder="4">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Total Amount</label>
+                            <input type="number" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white focus:border-rosae-red focus:ring-2 focus:ring-rosae-red/20 focus:outline-none" placeholder="1200" data-event="change:calculateTotals">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Amount Paid (Cash)</label>
+                            <input type="number" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white focus:border-rosae-red focus:ring-2 focus:ring-rosae-red/20 focus:outline-none" placeholder="800" data-event="change:calculateTotals">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Amount Paid (UPI)</label>
+                            <input type="number" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white focus:border-rosae-red focus:ring-2 focus:ring-rosae-red/20 focus:outline-none" placeholder="400" data-event="change:calculateTotals">
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-600 pt-6">
+                        <h4 class="text-lg font-semibold text-white mb-4">Snacks Information</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Snacks Amount</label>
+                                <input type="number" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white focus:border-rosae-red focus:ring-2 focus:ring-rosae-red/20 focus:outline-none" placeholder="300" data-event="change:calculateSnackTotals">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Snacks Cash</label>
+                                <input type="number" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white focus:border-rosae-red focus:ring-2 focus:ring-rosae-red/20 focus:outline-none" placeholder="200" data-event="change:calculateSnackTotals">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Snacks UPI</label>
+                                <input type="number" class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white focus:border-rosae-red focus:ring-2 focus:ring-rosae-red/20 focus:outline-none" placeholder="100" data-event="change:calculateSnackTotals">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-6 border-t border-gray-600">
+                        <div class="text-sm text-gray-400">
+                            <!-- @FUNCTIONALITY: Form validation should ensure cash + UPI = total amount -->
+                            <span id="validationMessage" class="text-rosae-red hidden">Cash + UPI must equal total amount</span>
+                        </div>
+                        <div class="flex space-x-4">
+                            <button type="button" class="px-6 py-3 bg-gray-600 hover:bg-gray-500 text-white rounded-lg font-medium transition-colors" data-event="click:closeBookingModal">
+                                Cancel
+                            </button>
+                            <button type="submit" class="px-6 py-3 bg-rosae-red hover:bg-rosae-dark-red text-white rounded-lg font-medium transition-colors" data-implementation="Should validate form before submission">
+                                <i class="fas fa-save mr-2"></i>
+                                Save Booking
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: BookingModal -->
+
+    <script>
+        // TODO: Implement business logic, API calls, and state management
+        (function() {
+            // Chart initialization - Daily Revenue
+            const dailyRevenueCtx = document.getElementById('dailyRevenueChart').getContext('2d');
+            new Chart(dailyRevenueCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Revenue',
+                        data: [32000, 28000, 45000, 38000, 52000, 48000, 45230],
+                        backgroundColor: '#DC2626',
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#9CA3AF'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: '#374151'
+                            },
+                            ticks: {
+                                color: '#9CA3AF',
+                                callback: function(value) {
+                                    return '₹' + (value / 1000) + 'k';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Chart initialization - Payment Methods
+            const paymentMethodsCtx = document.getElementById('paymentMethodsChart').getContext('2d');
+            new Chart(paymentMethodsCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Cash', 'UPI'],
+                    datasets: [{
+                        data: [62.9, 37.1],
+                        backgroundColor: ['#10B981', '#8B5CF6'],
+                        borderWidth: 0,
+                        cutout: '60%'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#9CA3AF',
+                                usePointStyle: true,
+                                padding: 20
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Modal functionality
+            const bookingModal = document.getElementById('bookingModal');
+            const quickBookingBtn = document.querySelector('[data-event="click:openBookingModal"]');
+            const closeModalBtns = document.querySelectorAll('[data-event="click:closeBookingModal"]');
+
+            if (quickBookingBtn) {
+                quickBookingBtn.addEventListener('click', function() {
+                    bookingModal.classList.remove('hidden');
+                });
+            }
+
+            closeModalBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    bookingModal.classList.add('hidden');
+                });
+            });
+
+            // Close modal on outside click
+            bookingModal.addEventListener('click', function(e) {
+                if (e.target === bookingModal) {
+                    bookingModal.classList.add('hidden');
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

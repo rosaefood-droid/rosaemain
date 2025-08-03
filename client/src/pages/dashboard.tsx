@@ -50,58 +50,27 @@ export default function Dashboard() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: dailyRevenue, isLoading: isDailyRevenueLoading } = useQuery({
+  const { data: dailyRevenue, isLoading: isDailyRevenueLoading, error: dailyRevenueError } = useQuery<any[]>({
     queryKey: ["/api/analytics/daily-revenue"],
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-      }
-    },
   });
 
-  const { data: paymentMethods, isLoading: isPaymentMethodsLoading } = useQuery({
+  const { data: paymentMethods, isLoading: isPaymentMethodsLoading, error: paymentMethodsError } = useQuery<any>({
     queryKey: ["/api/analytics/payment-methods"],
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-      }
-    },
   });
 
-  const { data: timeSlots, isLoading: isTimeSlotsLoading } = useQuery({
+  const { data: timeSlots, isLoading: isTimeSlotsLoading, error: timeSlotsError } = useQuery<any[]>({
     queryKey: ["/api/analytics/time-slots"],
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-      }
-    },
   });
 
-  const { data: recentBookings, isLoading: isRecentBookingsLoading } = useQuery({
+  const { data: recentBookings, isLoading: isRecentBookingsLoading, error: recentBookingsError } = useQuery<any[]>({
     queryKey: ["/api/bookings", "20"],
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
+  });
+
+  // Handle errors
+  useEffect(() => {
+    const errors = [dailyRevenueError, paymentMethodsError, timeSlotsError, recentBookingsError];
+    errors.forEach(error => {
+      if (error && isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
           description: "You are logged out. Logging in again...",
@@ -111,8 +80,8 @@ export default function Dashboard() {
           window.location.href = "/api/login";
         }, 500);
       }
-    },
-  });
+    });
+  }, [dailyRevenueError, paymentMethodsError, timeSlotsError, recentBookingsError, toast]);
 
   if (isLoading) {
     return (

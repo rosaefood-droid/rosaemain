@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, type User } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { 
   Theater,
@@ -115,7 +115,7 @@ export function Sidebar() {
         })}
         
         {/* Admin-only navigation */}
-        {user && 'role' in user && user.role === 'admin' && (
+        {user && user.role === 'admin' && (
           <div className="mt-6 border-t border-gray-600 pt-6">
             {adminNavigationItems.map((item) => {
               const Icon = item.icon;
@@ -143,7 +143,7 @@ export function Sidebar() {
       {/* User Profile Section */}
       <div className="p-6 border-t border-gray-600">
         <div className="flex items-center space-x-3">
-          {user && 'profileImageUrl' in user && user.profileImageUrl ? (
+          {user && user.profileImageUrl ? (
             <img 
               src={user.profileImageUrl} 
               alt="User Avatar" 
@@ -157,13 +157,13 @@ export function Sidebar() {
           )}
           <div className="flex-1">
             <p className="text-sm font-medium text-white" data-testid="text-user-name">
-              {user && 'firstName' in user && 'lastName' in user && (user.firstName || user.lastName) ? 
+              {user && (user.firstName || user.lastName) ? 
                 `${user.firstName || ''} ${user.lastName || ''}`.trim() : 
                 'User'
               }
             </p>
             <p className="text-xs text-gray-400" data-testid="text-user-role">
-              {user && 'role' in user && user.role === 'admin' ? 'Admin' : 'Employee'}
+              {user && user.role === 'admin' ? 'Admin' : 'Employee'}
             </p>
           </div>
           <button 

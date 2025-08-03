@@ -60,7 +60,7 @@ export default function Expenses() {
     },
   });
 
-  const { data: expenses, isLoading: isExpensesLoading } = useQuery({
+  const { data: expenses, isLoading: isExpensesLoading } = useQuery<any[]>({
     queryKey: ["/api/expenses"],
   });
 

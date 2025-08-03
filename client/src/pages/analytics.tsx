@@ -43,42 +43,23 @@ export default function Analytics() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: dailyRevenue, isLoading: isDailyRevenueLoading } = useQuery({
+  const { data: dailyRevenue, isLoading: isDailyRevenueLoading, error: dailyRevenueError } = useQuery<any[]>({
     queryKey: ["/api/analytics/daily-revenue?days=30"],
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-      }
-    },
   });
 
-  const { data: paymentMethods, isLoading: isPaymentMethodsLoading } = useQuery({
+  const { data: paymentMethods, isLoading: isPaymentMethodsLoading, error: paymentMethodsError } = useQuery<any>({
     queryKey: ["/api/analytics/payment-methods"],
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-      }
-    },
   });
 
-  const { data: timeSlots, isLoading: isTimeSlotsLoading } = useQuery({
+  const { data: timeSlots, isLoading: isTimeSlotsLoading, error: timeSlotsError } = useQuery<any[]>({
     queryKey: ["/api/analytics/time-slots"],
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
+  });
+
+  // Handle errors
+  useEffect(() => {
+    const errors = [dailyRevenueError, paymentMethodsError, timeSlotsError];
+    errors.forEach(error => {
+      if (error && isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
           description: "You are logged out. Logging in again...",
@@ -88,8 +69,8 @@ export default function Analytics() {
           window.location.href = "/api/login";
         }, 500);
       }
-    },
-  });
+    });
+  }, [dailyRevenueError, paymentMethodsError, timeSlotsError, toast]);
 
   if (isLoading) {
     return (
@@ -344,7 +325,7 @@ export default function Analytics() {
               <h3 className="text-xl font-semibold text-white mb-6" data-testid="text-guest-distribution-title">Guest Distribution by Time Slot</h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={timeSlots}>
+                  <LineChart data={timeSlots || []}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                     <XAxis dataKey="timeSlot" stroke="#9CA3AF" />
                     <YAxis stroke="#9CA3AF" />

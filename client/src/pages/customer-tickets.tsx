@@ -172,7 +172,7 @@ function CreateTicketModal({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: 
                   <FormItem>
                     <FormLabel>Customer Name</FormLabel>
                     <FormControl>
-                      <Input {...field} data-testid="input-customer-name" />
+                      <Input {...field} value={field.value || ''} data-testid="input-customer-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

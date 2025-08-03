@@ -34,14 +34,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupDevAuth(app);
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
+      // Check if user is authenticated via session
+      const sessionUser = (req as any).session?.user;
+      
+      if (!sessionUser) {
+        return res.status(401).json({ message: "Unauthorized - Please login" });
+      }
+
+      // Return the user data from session
+      res.json({
+        id: sessionUser.claims.sub,
+        email: sessionUser.claims.email,
+        firstName: sessionUser.claims.first_name,
+        lastName: sessionUser.claims.last_name,
+        profileImageUrl: sessionUser.claims.profile_image_url,
+        role: 'admin', // Default to admin for development
+      });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Auto-login for development
+  app.get('/', (req, res) => {
+    const sessionUser = (req as any).session?.user;
+    if (!sessionUser) {
+      // If not logged in, redirect to login
+      res.redirect('/api/login');
+    } else {
+      // If logged in, serve the React app
+      res.sendFile('index.html', { root: './client' });
     }
   });
 
@@ -303,26 +328,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error exporting expenses:", error);
       res.status(500).json({ message: "Failed to export expenses" });
-    }
-  });
-
-  // Customer ticket routes
-  app.post('/api/customer-tickets', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const ticketData = insertCustomerTicketSchema.parse(req.body);
-      
-      const ticket = await storage.createCustomerTicket({
-        ...ticketData,
-        createdBy: userId,
-      });
-
-      await storage.logActivity(userId, "CREATE", "CUSTOMER_TICKET", ticket.id, `Created ticket: ${ticketData.title}`);
-      
-      res.json(ticket);
-    } catch (error) {
-      console.error("Error creating customer ticket:", error);
-      res.status(500).json({ message: "Failed to create customer ticket" });
     }
   });
 

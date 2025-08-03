@@ -29,21 +29,23 @@ export default function Bookings() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: bookings, isLoading: isBookingsLoading, refetch } = useQuery({
+  const { data: bookings, isLoading: isBookingsLoading, refetch, error: bookingsError } = useQuery<any[]>({
     queryKey: ["/api/bookings"],
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-      }
-    },
   });
+
+  // Handle booking errors
+  useEffect(() => {
+    if (bookingsError && isUnauthorizedError(bookingsError)) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+    }
+  }, [bookingsError, toast]);
 
   if (isLoading) {
     return (

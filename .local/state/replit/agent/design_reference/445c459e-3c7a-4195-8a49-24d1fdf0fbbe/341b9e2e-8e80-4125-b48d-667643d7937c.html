@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookMeet - Schedule Book Club Meetings Across Time Zones</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    'book-brown': '#8B4513',
+                    'book-chocolate': '#D2691E', 
+                    'book-cream': '#F5E6D3',
+                    'book-burlywood': '#DEB887',
+                    'book-peru': '#CD853F',
+                    'book-sienna': '#A0522D',
+                    'book-warm': '#FAF7F2',
+                    'book-dark': '#5D4037'
+                },
+                fontFamily: {
+                    'playfair': ['Playfair Display', 'serif'],
+                    'inter': ['Inter', 'sans-serif']
+                }
+            }
+        }
+    };
+    </script>
+</head>
+<body class="bg-book-warm font-inter">
+    <!-- @COMPONENT: Header Navigation -->
+    <header class="bg-white shadow-sm border-b-2 border-book-cream">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-book-open text-book-brown text-2xl"></i>
+                    <h1 class="font-playfair font-bold text-2xl text-book-dark">BookMeet</h1>
+                </div>
+                <nav class="hidden md:flex space-x-8">
+                    <a href="#" class="text-book-dark hover:text-book-brown transition-colors">Dashboard</a>
+                    <a href="#" class="text-book-dark hover:text-book-brown transition-colors">My Meetings</a>
+                    <a href="#" class="text-book-dark hover:text-book-brown transition-colors">Book Clubs</a>
+                    <a href="#" class="text-book-dark hover:text-book-brown transition-colors">Settings</a>
+                </nav>
+                <div class="flex items-center space-x-4">
+                    <button class="p-2 text-book-dark hover:text-book-brown transition-colors">
+                        <i class="fas fa-bell text-lg"></i>
+                    </button>
+                    <div class="w-8 h-8 bg-book-brown rounded-full flex items-center justify-center">
+                        <span class="text-white text-sm font-semibold" data-bind="user.initials">JD</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    <!-- @END_COMPONENT: Header Navigation -->
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- @COMPONENT: Hero Section -->
+        <div class="text-center mb-12">
+            <h2 class="font-playfair text-4xl md:text-5xl font-bold text-book-dark mb-4">
+                Schedule Your Next Book Club Meeting
+            </h2>
+            <p class="text-lg text-book-sienna max-w-2xl mx-auto">
+                Connect with fellow book lovers across the globe. Schedule meetings, share discussions, and never miss a literary conversation.
+            </p>
+        </div>
+        <!-- @END_COMPONENT: Hero Section -->
+
+        <div class="grid lg:grid-cols-3 gap-8">
+            
+            <!-- @COMPONENT: Meeting Scheduler -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow-lg border border-book-cream p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-playfair text-2xl font-semibold text-book-dark flex items-center">
+                            <i class="fas fa-calendar-plus text-book-brown mr-3"></i>
+                            Create New Meeting
+                        </h3>
+                        <button class="bg-book-brown text-white px-4 py-2 rounded-lg hover:bg-book-sienna transition-colors">
+                            <i class="fas fa-save mr-2"></i>Save Draft
+                        </button>
+                    </div>
+
+                    <!-- Book Context Section -->
+                    <div class="mb-8 p-4 bg-book-cream rounded-lg">
+                        <h4 class="font-semibold text-book-dark mb-4 flex items-center">
+                            <i class="fas fa-book text-book-brown mr-2"></i>
+                            Book Discussion Details
+                        </h4>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-book-dark mb-2">Book Title</label>
+                                <input type="text" data-mock="true" placeholder="Enter book title..." 
+                                       class="w-full px-3 py-2 border border-book-burlywood rounded-md focus:ring-2 focus:ring-book-brown focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-book-dark mb-2">Author</label>
+                                <input type="text" data-mock="true" placeholder="Author name..." 
+                                       class="w-full px-3 py-2 border border-book-burlywood rounded-md focus:ring-2 focus:ring-book-brown focus:border-transparent">
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <label class="block text-sm font-medium text-book-dark mb-2">Discussion Topics</label>
+                            <textarea data-mock="true" rows="3" placeholder="What will you discuss? Key themes, favorite characters, plot points..."
+                                    class="w-full px-3 py-2 border border-book-burlywood rounded-md focus:ring-2 focus:ring-book-brown focus:border-transparent"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Meeting Details -->
+                    <div class="grid md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-book-dark mb-2">Meeting Title</label>
+                            <input type="text" data-mock="true" placeholder="Book Club Discussion: [Book Title]" 
+                                   class="w-full px-3 py-2 border border-book-burlywood rounded-md focus:ring-2 focus:ring-book-brown focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-book-dark mb-2">Duration</label>
+                            <select class="w-full px-3 py-2 border border-book-burlywood rounded-md focus:ring-2 focus:ring-book-brown focus:border-transparent">
+                                <option>1 hour</option>
+                                <option>1.5 hours</option>
+                                <option>2 hours</option>
+                                <option>2.5 hours</option>
+                                <option>3 hours</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Calendar Component -->
+                    <div class="mb-6">
+                        <h4 class="font-semibold text-book-dark mb-4 flex items-center">
+                            <i class="fas fa-calendar-alt text-book-brown mr-2"></i>
+                            Select Date & Time
+                        </h4>
+                        
+                        <!-- Calendar Grid -->
+                        <div class="bg-book-cream rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-4">
+                                <button class="p-2 hover:bg-book-burlywood rounded transition-colors">
+                                    <i class="fas fa-chevron-left text-book-brown"></i>
+                                </button>
+                                <h5 class="font-playfair text-lg font-semibold text-book-dark">December 2024</h5>
+                                <button class="p-2 hover:bg-book-burlywood rounded transition-colors">
+                                    <i class="fas fa-chevron-right text-book-brown"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Calendar Days -->
+                            <div class="grid grid-cols-7 gap-1 mb-2">
+                                <div class="text-center text-sm font-medium text-book-sienna py-2">Sun</div>
+                                <div class="text-center text-sm font-medium text-book-sienna py-2">Mon</div>
+                                <div class="text-center text-sm font-medium text-book-sienna py-2">Tue</div>
+                                <div class="text-center text-sm font-medium text-book-sienna py-2">Wed</div>
+                                <div class="text-center text-sm font-medium text-book-sienna py-2">Thu</div>
+                                <div class="text-center text-sm font-medium text-book-sienna py-2">Fri</div>
+                                <div class="text-center text-sm font-medium text-book-sienna py-2">Sat</div>
+                            </div>
+                            <div class="grid grid-cols-7 gap-1">
+                                <!-- Calendar dates -->
+                                <div class="text-center p-2 text-gray-400">29</div>
+                                <div class="text-center p-2 text-gray-400">30</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">1</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">2</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">3</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">4</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">5</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">6</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">7</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">8</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">9</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">10</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">11</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">12</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">13</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">14</div>
+                                <div class="text-center p-2 bg-book-brown text-white rounded">15</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">16</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">17</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">18</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">19</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">20</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">21</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">22</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">23</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">24</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">25</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">26</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">27</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">28</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">29</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">30</div>
+                                <div class="text-center p-2 hover:bg-book-burlywood rounded cursor-pointer">31</div>
+                                <div class="text-center p-2 text-gray-400">1</div>
+                                <div class="text-center p-2 text-gray-400">2</div>
+                            </div>
+                        </div>
+
+                        <!-- Time Selection -->
+                        <div class="mt-4 grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-book-dark mb-2">Start Time</label>
+                                <input type="time" data-mock="true" value="19:00" 
+                                       class="w-full px-3 py-2 border border-book-burlywood rounded-md focus:ring-2 focus:ring-book-brown focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-book-dark mb-2">Your Time Zone</label>
+                                <select class="w-full px-3 py-2 border border-book-burlywood rounded-md focus:ring-2 focus:ring-book-brown focus:border-transparent">
+                                    <option>UTC-8 (PST) Los Angeles</option>
+                                    <option>UTC-5 (EST) New York</option>
+                                    <option>UTC+0 (GMT) London</option>
+                                    <option>UTC+1 (CET) Paris</option>
+                                    <option>UTC+9 (JST) Tokyo</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button class="flex-1 bg-book-brown text-white py-3 px-6 rounded-lg hover:bg-book-sienna transition-colors font-medium" 
+                                data-event="click:createMeeting">
+                            <i class="fas fa-calendar-check mr-2"></i>Create Meeting
+                        </button>
+                        <button class="flex-1 bg-book-chocolate text-white py-3 px-6 rounded-lg hover:bg-book-peru transition-colors font-medium"
+                                data-event="click:previewMeeting">
+                            <i class="fas fa-eye mr-2"></i>Preview & Share
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: Meeting Scheduler -->
+
+            <!-- @COMPONENT: Sidebar -->
+            <div class="space-y-6">
+                
+                <!-- Time Zone Converter -->
+                <div class="bg-white rounded-xl shadow-lg border border-book-cream p-6">
+                    <h3 class="font-playfair text-xl font-semibold text-book-dark mb-4 flex items-center">
+                        <i class="fas fa-globe text-book-brown mr-3"></i>
+                        Time Zone Preview
+                    </h3>
+                    
+                    <!-- @STATE: selectedDateTime:Date, timeZones:Array -->
+                    <div class="space-y-3">
+                        <div class="p-3 bg-book-cream rounded-lg">
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium text-book-dark">Los Angeles</span>
+                                <span class="text-book-sienna">Dec 15, 7:00 PM</span>
+                            </div>
+                            <div class="text-sm text-book-sienna">UTC-8 (Host)</div>
+                        </div>
+                        <div class="p-3 bg-book-warm rounded-lg">
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium text-book-dark">New York</span>
+                                <span class="text-book-sienna">Dec 15, 10:00 PM</span>
+                            </div>
+                            <div class="text-sm text-book-sienna">UTC-5</div>
+                        </div>
+                        <div class="p-3 bg-book-warm rounded-lg">
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium text-book-dark">London</span>
+                                <span class="text-book-sienna">Dec 16, 3:00 AM</span>
+                            </div>
+                            <div class="text-sm text-book-sienna">UTC+0</div>
+                        </div>
+                        <div class="p-3 bg-book-warm rounded-lg">
+                            <div class="flex justify-between items-center">
+                                <span class="font-medium text-book-dark">Tokyo</span>
+                                <span class="text-book-sienna">Dec 16, 12:00 PM</span>
+                            </div>
+                            <div class="text-sm text-book-sienna">UTC+9</div>
+                        </div>
+                    </div>
+                    
+                    <button class="w-full mt-4 bg-book-burlywood text-book-dark py-2 px-4 rounded-lg hover:bg-book-peru hover:text-white transition-colors">
+                        <i class="fas fa-plus mr-2"></i>Add Time Zone
+                    </button>
+                </div>
+
+                <!-- Social Sharing Preview -->
+                <div class="bg-white rounded-xl shadow-lg border border-book-cream p-6">
+                    <h3 class="font-playfair text-xl font-semibold text-book-dark mb-4 flex items-center">
+                        <i class="fas fa-share-alt text-book-brown mr-3"></i>
+                        Social Sharing
+                    </h3>
+                    
+                    <!-- Social Media Preview Card -->
+                    <div class="border border-book-burlywood rounded-lg p-4 mb-4">
+                        <div class="flex items-start space-x-3">
+                            <!-- Book cover placeholder image with detailed description -->
+                            <!-- A classic book cover with vintage typography and warm earth tones -->
+                            <img src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=300&h=400&q=80" 
+                                 alt="Book cover" class="w-16 h-20 object-cover rounded" data-mock-image="true">
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-book-dark text-sm" data-bind="meeting.bookTitle" data-mock="true">
+                                    The Seven Husbands of Evelyn Hugo
+                                </h4>
+                                <p class="text-book-sienna text-xs mt-1" data-mock="true">
+                                    Join our book club discussion on Dec 15 at 7:00 PM PST
+                                </p>
+                                <div class="flex items-center mt-2 text-xs text-book-sienna">
+                                    <i class="fas fa-users mr-1"></i>
+                                    <span data-mock="true">BookMeet - Literary Discussions</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Social Media Buttons -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <button class="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                                data-event="click:shareToFacebook">
+                            <i class="fab fa-facebook-f mr-2"></i>Facebook
+                        </button>
+                        <button class="bg-blue-400 text-white py-2 px-4 rounded-lg hover:bg-blue-500 transition-colors text-sm"
+                                data-event="click:shareToTwitter">
+                            <i class="fab fa-twitter mr-2"></i>Twitter
+                        </button>
+                        <button class="bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors text-sm"
+                                data-event="click:shareToInstagram">
+                            <i class="fab fa-instagram mr-2"></i>Instagram
+                        </button>
+                        <button class="bg-gray-700 text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition-colors text-sm"
+                                data-event="click:copyLink">
+                            <i class="fas fa-link mr-2"></i>Copy Link
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Upcoming Meetings -->
+                <div class="bg-white rounded-xl shadow-lg border border-book-cream p-6">
+                    <h3 class="font-playfair text-xl font-semibold text-book-dark mb-4 flex items-center">
+                        <i class="fas fa-clock text-book-brown mr-3"></i>
+                        Upcoming Meetings
+                    </h3>
+                    
+                    <!-- @MAP: upcomingMeetings.map(meeting => ( -->
+                    <div class="space-y-3">
+                        <div class="p-3 bg-book-cream rounded-lg" data-mock="true">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-medium text-book-dark text-sm">Pride and Prejudice</h4>
+                                <span class="text-xs text-book-sienna">Dec 12</span>
+                            </div>
+                            <p class="text-xs text-book-sienna">Discussion: Character Development</p>
+                            <div class="text-xs text-book-sienna mt-1">6:00 PM PST</div>
+                        </div>
+                        
+                        <div class="p-3 bg-book-warm rounded-lg" data-mock="true">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-medium text-book-dark text-sm">1984</h4>
+                                <span class="text-xs text-book-sienna">Dec 20</span>
+                            </div>
+                            <p class="text-xs text-book-sienna">Discussion: Dystopian Themes</p>
+                            <div class="text-xs text-book-sienna mt-1">7:30 PM PST</div>
+                        </div>
+                        
+                        <div class="p-3 bg-book-warm rounded-lg" data-mock="true">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-medium text-book-dark text-sm">The Great Gatsby</h4>
+                                <span class="text-xs text-book-sienna">Dec 28</span>
+                            </div>
+                            <p class="text-xs text-book-sienna">Discussion: Symbolism & Themes</p>
+                            <div class="text-xs text-book-sienna mt-1">8:00 PM PST</div>
+                        </div>
+                    </div>
+                    <!-- @END_MAP )) -->
+                    
+                    <button class="w-full mt-4 text-book-brown hover:text-book-sienna transition-colors text-sm font-medium"
+                            data-event="click:viewAllMeetings">
+                        <i class="fas fa-arrow-right mr-2"></i>View All Meetings
+                    </button>
+                </div>
+
+            </div>
+            <!-- @END_COMPONENT: Sidebar -->
+            
+        </div>
+
+        <!-- @COMPONENT: Recent Book Discussions -->
+        <div class="mt-12">
+            <div class="bg-white rounded-xl shadow-lg border border-book-cream p-6">
+                <h3 class="font-playfair text-2xl font-semibold text-book-dark mb-6 flex items-center">
+                    <i class="fas fa-comments text-book-brown mr-3"></i>
+                    Recent Book Discussions
+                </h3>
+                
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- @MAP: recentDiscussions.map(discussion => ( -->
+                    <div class="border border-book-burlywood rounded-lg p-4 hover:shadow-md transition-shadow" data-mock="true">
+                        <div class="flex items-start space-x-3">
+                            <!-- Vintage book photography with warm lighting -->
+                            <img src="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=200&h=280&q=80" 
+                                 alt="Book cover" class="w-12 h-16 object-cover rounded" data-mock-image="true">
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-book-dark">Educated</h4>
+                                <p class="text-sm text-book-sienna mt-1">Literary Book Club</p>
+                                <p class="text-xs text-book-sienna mt-2">
+                                    "The memoir's exploration of education vs. family loyalty was fascinating..."
+                                </p>
+                                <div class="flex items-center justify-between mt-3">
+                                    <span class="text-xs text-book-sienna">5 participants</span>
+                                    <button class="text-book-brown hover:text-book-sienna text-xs">
+                                        <i class="fas fa-share mr-1"></i>Share
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border border-book-burlywood rounded-lg p-4 hover:shadow-md transition-shadow" data-mock="true">
+                        <div class="flex items-start space-x-3">
+                            <!-- Stack of classic literature books with vintage aesthetic -->
+                            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=200&h=280&q=80" 
+                                 alt="Book cover" class="w-12 h-16 object-cover rounded" data-mock-image="true">
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-book-dark">Where the Crawdads Sing</h4>
+                                <p class="text-sm text-book-sienna mt-1">Nature Lovers Book Club</p>
+                                <p class="text-xs text-book-sienna mt-2">
+                                    "The nature descriptions were absolutely beautiful, and the mystery kept us guessing..."
+                                </p>
+                                <div class="flex items-center justify-between mt-3">
+                                    <span class="text-xs text-book-sienna">8 participants</span>
+                                    <button class="text-book-brown hover:text-book-sienna text-xs">
+                                        <i class="fas fa-share mr-1"></i>Share
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="border border-book-burlywood rounded-lg p-4 hover:shadow-md transition-shadow" data-mock="true">
+                        <div class="flex items-start space-x-3">
+                            <!-- Open book with coffee cup creating cozy reading atmosphere -->
+                            <img src="https://images.unsplash.com/photo-1512820790803-83ca734da794?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=200&h=280&q=80" 
+                                 alt="Book cover" class="w-12 h-16 object-cover rounded" data-mock-image="true">
+                            <div class="flex-1">
+                                <h4 class="font-semibold text-book-dark">The Midnight Library</h4>
+                                <p class="text-sm text-book-sienna mt-1">Philosophy Book Club</p>
+                                <p class="text-xs text-book-sienna mt-2">
+                                    "The concept of infinite lives and choices sparked deep philosophical discussions..."
+                                </p>
+                                <div class="flex items-center justify-between mt-3">
+                                    <span class="text-xs text-book-sienna">12 participants</span>
+                                    <button class="text-book-brown hover:text-book-sienna text-xs">
+                                        <i class="fas fa-share mr-1"></i>Share
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_MAP )) -->
+                </div>
+                
+                <div class="text-center mt-6">
+                    <button class="bg-book-chocolate text-white py-2 px-6 rounded-lg hover:bg-book-peru transition-colors"
+                            data-event="click:viewAllDiscussions">
+                        <i class="fas fa-book-reader mr-2"></i>Explore More Discussions
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- @END_COMPONENT: Recent Book Discussions -->
+
+    </main>
+
+    <!-- @COMPONENT: Footer -->
+    <footer class="bg-book-dark text-book-cream mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div>
+                    <div class="flex items-center space-x-3 mb-4">
+                        <i class="fas fa-book-open text-book-chocolate text-2xl"></i>
+                        <h3 class="font-playfair font-bold text-xl">BookMeet</h3>
+                    </div>
+                    <p class="text-sm text-book-burlywood">
+                        Connecting book lovers across time zones for meaningful literary discussions.
+                    </p>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4">Features</h4>
+                    <ul class="space-y-2 text-sm text-book-burlywood">
+                        <li><a href="#" class="hover:text-book-cream transition-colors">Schedule Meetings</a></li>
+                        <li><a href="#" class="hover:text-book-cream transition-colors">Time Zone Converter</a></li>
+                        <li><a href="#" class="hover:text-book-cream transition-colors">Social Sharing</a></li>
+                        <li><a href="#" class="hover:text-book-cream transition-colors">Book Club Management</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4">Community</h4>
+                    <ul class="space-y-2 text-sm text-book-burlywood">
+                        <li><a href="#" class="hover:text-book-cream transition-colors">Join Book Clubs</a></li>
+                        <li><a href="#" class="hover:text-book-cream transition-colors">Discussion Forums</a></li>
+                        <li><a href="#" class="hover:text-book-cream transition-colors">Reading Challenges</a></li>
+                        <li><a href="#" class="hover:text-book-cream transition-colors">Author Events</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4">Connect</h4>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-book-burlywood hover:text-book-cream transition-colors">
+                            <i class="fab fa-facebook-f text-lg"></i>
+                        </a>
+                        <a href="#" class="text-book-burlywood hover:text-book-cream transition-colors">
+                            <i class="fab fa-twitter text-lg"></i>
+                        </a>
+                        <a href="#" class="text-book-burlywood hover:text-book-cream transition-colors">
+                            <i class="fab fa-instagram text-lg"></i>
+                        </a>
+                        <a href="#" class="text-book-burlywood hover:text-book-cream transition-colors">
+                            <i class="fab fa-goodreads text-lg"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="border-t border-book-sienna mt-8 pt-8 text-center text-sm text-book-burlywood">
+                <p>&copy; 2024 BookMeet. Bringing readers together, one discussion at a time.</p>
+            </div>
+        </div>
+    </footer>
+    <!-- @END_COMPONENT: Footer -->
+
+    <script>
+    // TODO: Implement business logic, API calls, and state management
+    
+    (function() {
+        // Calendar interaction simulation
+        const calendarDates = document.querySelectorAll('.grid-cols-7 .text-center:not(.text-gray-400)');
+        calendarDates.forEach(date => {
+            date.addEventListener('click', function() {
+                // Remove previous selection
+                calendarDates.forEach(d => {
+                    d.classList.remove('bg-book-brown', 'text-white');
+                    d.classList.add('hover:bg-book-burlywood');
+                });
+                
+                // Add selection to clicked date
+                this.classList.add('bg-book-brown', 'text-white');
+                this.classList.remove('hover:bg-book-burlywood');
+                
+                // TODO: Update time zone preview with selected date
+                console.log('Date selected:', this.textContent);
+            });
+        });
+        
+        // Time zone updates simulation
+        const timeZoneSelect = document.querySelector('select');
+        if (timeZoneSelect) {
+            timeZoneSelect.addEventListener('change', function() {
+                // TODO: Recalculate and update time zone displays
+                console.log('Time zone changed:', this.value);
+            });
+        }
+        
+        // Social sharing event handlers
+        const shareButtons = document.querySelectorAll('[data-event^="click:share"]');
+        shareButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const action = this.dataset.event.split(':')[1];
+                // TODO: Implement actual social media sharing APIs
+                console.log('Share action:', action);
+            });
+        });
+        
+        // Meeting creation handler
+        const createButton = document.querySelector('[data-event="click:createMeeting"]');
+        if (createButton) {
+            createButton.addEventListener('click', function() {
+                // TODO: Validate form data and create meeting via API
+                console.log('Create meeting clicked');
+            });
+        }
+        
+    })();
+    </script>
+
+</body>
+</html>

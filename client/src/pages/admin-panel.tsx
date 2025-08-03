@@ -30,7 +30,7 @@ export default function AdminPanel() {
     }
   }, [isAuthenticated, isLoading, user, toast]);
 
-  const { data: users, isLoading: isUsersLoading } = useQuery({
+  const { data: users, isLoading: isUsersLoading } = useQuery<any[]>({
     queryKey: ["/api/admin/users"],
     enabled: user?.role === 'admin',
   });

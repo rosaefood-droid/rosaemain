@@ -46,21 +46,23 @@ export default function LeaveManagement() {
     },
   });
 
-  const { data: leaveApplications, isLoading: isLeaveLoading } = useQuery({
+  const { data: leaveApplications, isLoading: isLeaveLoading, error: leaveError } = useQuery<any[]>({
     queryKey: ["/api/leave-applications"],
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-      }
-    },
   });
+
+  // Handle leave applications error
+  useEffect(() => {
+    if (leaveError && isUnauthorizedError(leaveError)) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+    }
+  }, [leaveError, toast]);
 
   const createLeaveMutation = useMutation({
     mutationFn: async (data: any) => {
