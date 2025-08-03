@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
-import Landing from "@/pages/landing";
+import LoginPage from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Bookings from "@/pages/bookings";
 import Analytics from "@/pages/analytics";
@@ -12,6 +12,7 @@ import Expenses from "@/pages/expenses";
 import LeaveManagement from "@/pages/leave-management";
 import UserManagement from "@/pages/user-management";
 import AdminPanel from "@/pages/admin-panel";
+import Configuration from "@/pages/configuration";
 import CustomerTickets from "@/pages/customer-tickets";
 import NotFound from "@/pages/not-found";
 
@@ -20,14 +21,14 @@ function Router() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading...</div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">
+        <div className="text-lg">Loading ROSAE Theatre Management...</div>
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    return <Landing />;
+    return <LoginPage />;
   }
 
   return (
@@ -40,6 +41,7 @@ function Router() {
       <Route path="/user-management" component={UserManagement} />
       <Route path="/customer-tickets" component={CustomerTickets} />
       <Route path="/admin-panel" component={AdminPanel} />
+      <Route path="/configuration" component={Configuration} />
       <Route component={NotFound} />
     </Switch>
   );

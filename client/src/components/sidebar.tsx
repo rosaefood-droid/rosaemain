@@ -1,6 +1,7 @@
 import { useLocation } from "wouter";
 import { useAuth, type User } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Theater,
   BarChart3, 
@@ -11,7 +12,8 @@ import {
   Calendar, 
   Users,
   LogOut,
-  Shield
+  Shield,
+  Settings
 } from "lucide-react";
 
 const navigationItems = [
@@ -47,14 +49,17 @@ const navigationItems = [
     icon: Calendar,
   },
   {
-    name: "User Management", 
-    href: "/user-management",
-    icon: Users,
-  },
-  {
     name: "Customer Tickets",
     href: "/customer-tickets", 
     icon: Ticket,
+  },
+];
+
+const adminOnlyItems = [
+  {
+    name: "User Management", 
+    href: "/user-management",
+    icon: Users,
   },
 ];
 
@@ -65,14 +70,45 @@ const adminNavigationItems = [
     icon: Shield,
     adminOnly: true,
   },
+  {
+    name: "Configuration",
+    href: "/configuration",
+    icon: Settings,
+    adminOnly: true,
+  },
 ];
 
 export function Sidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
+  const { toast } = useToast();
 
-  const handleLogout = () => {
-    window.location.href = "/api/logout";
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Logged out successfully",
+          description: "You have been logged out of the system",
+        });
+        window.location.reload();
+      } else {
+        toast({
+          title: "Logout failed",
+          description: "Please try again",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Logout failed",
+        description: "Network error occurred",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -117,6 +153,25 @@ export function Sidebar() {
         {/* Admin-only navigation */}
         {user && user.role === 'admin' && (
           <div className="mt-6 border-t border-gray-600 pt-6">
+            {adminOnlyItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location === item.href;
+
+              return (
+                <a
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center px-6 py-3 text-gray-300 hover:text-white hover:bg-gray-700 transition-colors",
+                    isActive && "text-white bg-rosae-red/20 border-r-4 border-rosae-red"
+                  )}
+                  data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
+                >
+                  <Icon className="mr-3 w-5 h-5" />
+                  {item.name}
+                </a>
+              );
+            })}
             {adminNavigationItems.map((item) => {
               const Icon = item.icon;
               const isActive = location === item.href;

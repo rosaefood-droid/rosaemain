@@ -1,138 +1,135 @@
 import { sql } from 'drizzle-orm';
 import {
   index,
-  jsonb,
-  pgTable,
-  timestamp,
-  varchar,
+  sqliteTable,
   text,
   integer,
-  decimal,
-  boolean,
-  date,
-} from "drizzle-orm/pg-core";
+  real,
+  blob,
+} from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Session storage table (required for Replit Auth)
-export const sessions = pgTable(
+export const sessions = sqliteTable(
   "sessions",
   {
-    sid: varchar("sid").primaryKey(),
-    sess: jsonb("sess").notNull(),
-    expire: timestamp("expire").notNull(),
+    sid: text("sid").primaryKey(),
+    sess: text("sess").notNull(),
+    expire: text("expire").notNull(),
   },
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
 // User storage table (required for Replit Auth)
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").default("employee"), // admin, employee
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey().default(sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`),
+  email: text("email").unique(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  profileImageUrl: text("profile_image_url"),
+  passwordHash: text("password_hash"),
+  role: text("role").default("employee"), // admin, employee
+  createdAt: text("created_at").default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").default(sql`(datetime('now'))`),
 });
 
 // Theatre bookings table
-export const bookings = pgTable("bookings", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  theatreName: varchar("theatre_name").notNull(),
-  timeSlot: varchar("time_slot").notNull(),
+export const bookings = sqliteTable("bookings", {
+  id: text("id").primaryKey().default(sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`),
+  theatreName: text("theatre_name").notNull(),
+  timeSlot: text("time_slot").notNull(),
   guests: integer("guests").notNull(),
-  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-  cashAmount: decimal("cash_amount", { precision: 10, scale: 2 }).notNull(),
-  upiAmount: decimal("upi_amount", { precision: 10, scale: 2 }).notNull(),
-  snacksAmount: decimal("snacks_amount", { precision: 10, scale: 2 }).default("0"),
-  snacksCash: decimal("snacks_cash", { precision: 10, scale: 2 }).default("0"),
-  snacksUpi: decimal("snacks_upi", { precision: 10, scale: 2 }).default("0"),
-  bookingDate: date("booking_date").notNull(),
-  createdBy: varchar("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
+  totalAmount: real("total_amount").notNull(),
+  cashAmount: real("cash_amount").notNull(),
+  upiAmount: real("upi_amount").notNull(),
+  snacksAmount: real("snacks_amount").default(0),
+  snacksCash: real("snacks_cash").default(0),
+  snacksUpi: real("snacks_upi").default(0),
+  bookingDate: text("booking_date").notNull(),
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: text("created_at").default(sql`(datetime('now'))`),
 });
 
 // Expenses table
-export const expenses = pgTable("expenses", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  category: varchar("category").notNull(),
+export const expenses = sqliteTable("expenses", {
+  id: text("id").primaryKey().default(sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`),
+  category: text("category").notNull(),
   description: text("description").notNull(),
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  expenseDate: date("expense_date").notNull(),
-  createdBy: varchar("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
+  amount: real("amount").notNull(),
+  expenseDate: text("expense_date").notNull(),
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: text("created_at").default(sql`(datetime('now'))`),
 });
 
 // Leave applications table
-export const leaveApplications = pgTable("leave_applications", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  startDate: date("start_date").notNull(),
-  endDate: date("end_date").notNull(),
+export const leaveApplications = sqliteTable("leave_applications", {
+  id: text("id").primaryKey().default(sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`),
+  userId: text("user_id").references(() => users.id).notNull(),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date").notNull(),
   reason: text("reason").notNull(),
-  status: varchar("status").default("pending"), // pending, approved, rejected
-  reviewedBy: varchar("reviewed_by").references(() => users.id),
-  reviewedAt: timestamp("reviewed_at"),
-  createdAt: timestamp("created_at").defaultNow(),
+  status: text("status").default("pending"), // pending, approved, rejected
+  reviewedBy: text("reviewed_by").references(() => users.id),
+  reviewedAt: text("reviewed_at"),
+  createdAt: text("created_at").default(sql`(datetime('now'))`),
 });
 
 // Activity logs table
-export const activityLogs = pgTable("activity_logs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  action: varchar("action").notNull(),
-  resourceType: varchar("resource_type").notNull(),
-  resourceId: varchar("resource_id"),
+export const activityLogs = sqliteTable("activity_logs", {
+  id: text("id").primaryKey().default(sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`),
+  userId: text("user_id").references(() => users.id).notNull(),
+  action: text("action").notNull(),
+  resourceType: text("resource_type").notNull(),
+  resourceId: text("resource_id"),
   details: text("details"),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: text("created_at").default(sql`(datetime('now'))`),
 });
 
 // Customer tickets table
-export const customerTickets = pgTable("customer_tickets", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  title: varchar("title").notNull(),
+export const customerTickets = sqliteTable("customer_tickets", {
+  id: text("id").primaryKey().default(sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`),
+  title: text("title").notNull(),
   description: text("description").notNull(),
-  priority: varchar("priority").default("medium"), // low, medium, high
-  status: varchar("status").default("open"), // open, in_progress, closed
-  customerName: varchar("customer_name"),
-  customerEmail: varchar("customer_email"),
-  customerPhone: varchar("customer_phone"),
-  imageUrl: varchar("image_url"), // for uploaded images
-  assignedTo: varchar("assigned_to").references(() => users.id),
-  createdBy: varchar("created_by").references(() => users.id).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  priority: text("priority").default("medium"), // low, medium, high
+  status: text("status").default("open"), // open, in_progress, closed
+  customerName: text("customer_name"),
+  customerEmail: text("customer_email"),
+  customerPhone: text("customer_phone"),
+  imageUrl: text("image_url"), // for uploaded images
+  assignedTo: text("assigned_to").references(() => users.id),
+  createdBy: text("created_by").references(() => users.id).notNull(),
+  createdAt: text("created_at").default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").default(sql`(datetime('now'))`),
 });
 
 // Calendar events table for webhook integration
-export const calendarEvents = pgTable("calendar_events", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  bookingId: varchar("booking_id").references(() => bookings.id).notNull(),
-  googleCalendarEventId: varchar("google_calendar_event_id"),
-  title: varchar("title").notNull(),
+export const calendarEvents = sqliteTable("calendar_events", {
+  id: text("id").primaryKey().default(sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`),
+  bookingId: text("booking_id").references(() => bookings.id).notNull(),
+  googleCalendarEventId: text("google_calendar_event_id"),
+  title: text("title").notNull(),
   description: text("description"),
-  startTime: timestamp("start_time").notNull(),
-  endTime: timestamp("end_time").notNull(),
-  location: varchar("location"),
-  status: varchar("status").default("confirmed"), // confirmed, cancelled
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  location: text("location"),
+  status: text("status").default("confirmed"), // confirmed, cancelled
+  createdAt: text("created_at").default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").default(sql`(datetime('now'))`),
 });
 
 // Sales reports table for food and screens
-export const salesReports = pgTable("sales_reports", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  reportDate: date("report_date").notNull(),
-  totalRevenue: decimal("total_revenue", { precision: 10, scale: 2 }).notNull(),
-  foodSales: decimal("food_sales", { precision: 10, scale: 2 }).default("0"),
-  screenSales: decimal("screen_sales", { precision: 10, scale: 2 }).default("0"),
+export const salesReports = sqliteTable("sales_reports", {
+  id: text("id").primaryKey().default(sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`),
+  reportDate: text("report_date").notNull(),
+  totalRevenue: real("total_revenue").notNull(),
+  foodSales: real("food_sales").default(0),
+  screenSales: real("screen_sales").default(0),
   totalBookings: integer("total_bookings").default(0),
   totalGuests: integer("total_guests").default(0),
-  avgBookingValue: decimal("avg_booking_value", { precision: 10, scale: 2 }).default("0"),
-  createdBy: varchar("created_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
+  avgBookingValue: real("avg_booking_value").default(0),
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: text("created_at").default(sql`(datetime('now'))`),
 });
 
 // Insert schemas
@@ -169,9 +166,10 @@ export const insertLeaveApplicationSchema = createInsertSchema(leaveApplications
 export const upsertUserSchema = createInsertSchema(users).pick({
   id: true,
   email: true,
-  firstName: true,
-  lastName: true,
-  profileImageUrl: true,
+  first_name: true,
+  last_name: true,
+  profile_image_url: true,
+  role: true,
 });
 
 export const insertCustomerTicketSchema = createInsertSchema(customerTickets).omit({

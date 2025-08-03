@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -14,14 +14,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
-const THEATRE_OPTIONS = [
+// Default options (fallback if config is not loaded)
+const DEFAULT_THEATRE_OPTIONS = [
   "Screen 1",
   "Screen 2", 
   "Screen 3",
   "VIP Screen"
 ];
 
-const TIME_SLOTS = [
+const DEFAULT_TIME_SLOTS = [
   "2:30 PM",
   "5:00 PM",
   "8:15 PM", 
@@ -37,6 +38,16 @@ interface BookingModalProps {
 export function BookingModal({ isOpen, onClose, onSuccess }: BookingModalProps) {
   const { toast } = useToast();
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  // Fetch configuration for theatres and time slots
+  const { data: config } = useQuery({
+    queryKey: ["/api/config"],
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Use config data or fallback to defaults
+  const theatreOptions = config?.theatres || DEFAULT_THEATRE_OPTIONS;
+  const timeSlots = config?.timeSlots || DEFAULT_TIME_SLOTS;
 
   const form = useForm({
     resolver: zodResolver(insertBookingSchema.extend({
@@ -158,20 +169,9 @@ export function BookingModal({ isOpen, onClose, onSuccess }: BookingModalProps) 
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="bg-rosae-dark-gray border-gray-600 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl font-bold text-white">
-              New Theatre Booking
-            </DialogTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClose}
-              className="text-gray-400 hover:text-white"
-              data-testid="button-close-modal"
-            >
-              <X className="w-5 h-5" />
-            </Button>
-          </div>
+          <DialogTitle className="text-2xl font-bold text-white">
+            New Theatre Booking
+          </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -190,7 +190,7 @@ export function BookingModal({ isOpen, onClose, onSuccess }: BookingModalProps) 
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent className="bg-gray-800 border-gray-600">
-                        {THEATRE_OPTIONS.map((theatre) => (
+                        {theatreOptions.map((theatre) => (
                           <SelectItem key={theatre} value={theatre}>
                             {theatre}
                           </SelectItem>
@@ -215,7 +215,7 @@ export function BookingModal({ isOpen, onClose, onSuccess }: BookingModalProps) 
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent className="bg-gray-800 border-gray-600">
-                        {TIME_SLOTS.map((slot) => (
+                        {timeSlots.map((slot) => (
                           <SelectItem key={slot} value={slot}>
                             {slot}
                           </SelectItem>

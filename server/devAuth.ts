@@ -24,30 +24,41 @@ export async function setupDevAuth(app: Express) {
 
   app.get("/api/dev-login", async (req, res) => {
     try {
-      // Create a simple admin user without database dependency
+      // Create a simple admin user
       const adminUser = {
         id: "34316921",
         email: "rosaeleisure@gmail.com",
-        firstName: "ROSAE",
-        lastName: "Admin",
-        profileImageUrl: null,
+        first_name: "ROSAE",
+        last_name: "Admin",
+        profile_image_url: null,
+        role: "admin",
       };
+
+      // Create the user in the database
+      try {
+        console.log("Creating user in database:", adminUser);
+        const createdUser = await storage.upsertUser(adminUser);
+        console.log("User created successfully:", createdUser);
+      } catch (dbError) {
+        console.error("Error creating user in database:", dbError);
+        // Continue anyway - the session will still work
+      }
 
       // Set up a mock session
       (req as any).session.user = {
         claims: {
           sub: adminUser.id,
           email: adminUser.email,
-          first_name: adminUser.firstName,
-          last_name: adminUser.lastName,
-          profile_image_url: adminUser.profileImageUrl,
+          first_name: adminUser.first_name,
+          last_name: adminUser.last_name,
+          profile_image_url: adminUser.profile_image_url,
         },
         access_token: "dev-token",
         refresh_token: "dev-refresh",
         expires_at: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
       };
 
-      res.redirect("/");
+      res.redirect("/?logged_in=true");
     } catch (error) {
       console.error("Dev login error:", error);
       res.status(500).json({ message: "Dev login failed" });
@@ -65,19 +76,12 @@ export async function setupDevAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   // Check if user is authenticated via session
   const sessionUser = (req as any).session?.user;
-  
+
   if (!sessionUser) {
     return res.status(401).json({ message: "Unauthorized - Please login" });
   }
 
-  // Check if session is expired
-  const now = Math.floor(Date.now() / 1000);
-  if (sessionUser.expires_at && now > sessionUser.expires_at) {
-    (req as any).session.destroy();
-    return res.status(401).json({ message: "Session expired - Please login again" });
-  }
-
-  // For development, always allow access if session exists
+  // Attach user to request
   (req as any).user = sessionUser;
   next();
 };

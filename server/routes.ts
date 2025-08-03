@@ -2,8 +2,10 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 // import { setupAuth, isAuthenticated } from "./replitAuth";
-import { setupDevAuth, isAuthenticated } from "./devAuth";
+import { isAuthenticated } from "./devAuth";
 import { insertBookingSchema, insertExpenseSchema, insertLeaveApplicationSchema, insertCustomerTicketSchema, type Booking } from "@shared/schema";
+import session from "express-session";
+import bcrypt from "bcryptjs";
 
 // Calendar webhook helper function
 async function createCalendarEvent(booking: Booking) {
@@ -30,8 +32,17 @@ async function sendWebhookNotification(action: string, data: any) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware (dev mode)
-  await setupDevAuth(app);
+  // Set up session middleware
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'rosae-dev-secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: false, // Set to true in production with HTTPS
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    }
+  }));
 
   // Auth routes
   app.get('/api/auth/user', async (req: any, res) => {
@@ -58,17 +69,323 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Auto-login for development
-  app.get('/', (req, res) => {
-    const sessionUser = (req as any).session?.user;
-    if (!sessionUser) {
-      // If not logged in, redirect to login
-      res.redirect('/api/login');
-    } else {
-      // If logged in, serve the React app
-      res.sendFile('index.html', { root: './client' });
+  // Login route
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      console.log('Login attempt:', req.body);
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        console.log('Missing email or password');
+        return res.status(400).json({ message: 'Email and password are required' });
+      }
+
+      console.log('Checking credentials:', { email, password });
+
+      // Check if it's admin login
+      if (email === 'admin@rosae.com' && password === 'Rosae@spaces') {
+        console.log('Admin credentials valid');
+        const user = {
+          id: 'admin-001',
+          email: 'admin@rosae.com',
+          firstName: 'Admin',
+          lastName: 'User',
+          role: 'admin'
+        };
+        
+        // Set session with claims structure to match isAuthenticated middleware
+        (req as any).session.user = {
+          claims: {
+            sub: user.id,
+            email: user.email,
+            first_name: user.firstName,
+            last_name: user.lastName,
+            profile_image_url: null,
+          },
+          access_token: "dev-token",
+        };
+        console.log('Session set:', (req as any).session);
+        
+        res.json(user);
+      } else {
+              // Check for employee login
+      try {
+        console.log('=== EMPLOYEE LOGIN DEBUG ===');
+        console.log('Email provided:', email);
+        console.log('Password provided:', password);
+        
+        const user = await storage.getUserByEmail(email);
+        console.log('Database lookup result:', user ? {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          hasPasswordHash: !!user.passwordHash,
+          passwordHashLength: user.passwordHash ? user.passwordHash.length : 0
+        } : 'User not found');
+        
+        if (user && user.passwordHash) {
+          console.log('Attempting password comparison...');
+          const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+          console.log('Password comparison result:', isValidPassword);
+          
+          if (isValidPassword) {
+            console.log('✅ Employee login successful for:', user.email);
+            
+            // Set session with claims structure
+            (req as any).session.user = {
+              claims: {
+                sub: user.id,
+                email: user.email,
+                first_name: user.firstName,
+                last_name: user.lastName,
+                profile_image_url: user.profileImageUrl,
+              },
+              access_token: "dev-token",
+            };
+            console.log('Session created for employee:', (req as any).session.user);
+            
+            res.json({
+              id: user.id,
+              email: user.email,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              role: user.role
+            });
+          } else {
+            console.log('❌ Invalid password for employee:', user.email);
+            res.status(401).json({ message: 'Invalid credentials' });
+          }
+        } else {
+          console.log('❌ User not found or missing password hash');
+          res.status(401).json({ message: 'Invalid credentials' });
+        }
+      } catch (error) {
+        console.error('❌ Error during employee login:', error);
+        res.status(401).json({ message: 'Invalid credentials' });
+      }
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ message: 'Login failed' });
     }
   });
+
+  // Logout route
+  app.post('/api/auth/logout', (req, res) => {
+    (req as any).session.destroy((err: any) => {
+      if (err) {
+        console.error('Logout error:', err);
+        return res.status(500).json({ message: 'Logout failed' });
+      }
+      res.json({ message: 'Logged out successfully' });
+    });
+  });
+
+  // Check auth status
+  app.get('/api/auth/status', async (req, res) => {
+    console.log('Auth status check - session:', (req as any).session);
+    const sessionUser = (req as any).session?.user;
+    console.log('Session user:', sessionUser);
+    
+    if (sessionUser && sessionUser.claims) {
+      try {
+        // Get user from database to get the correct role
+        const user = await storage.getUserByEmail(sessionUser.claims.email);
+        const userData = {
+          id: sessionUser.claims.sub,
+          email: sessionUser.claims.email,
+          firstName: sessionUser.claims.first_name,
+          lastName: sessionUser.claims.last_name,
+          profileImageUrl: sessionUser.claims.profile_image_url,
+          role: user?.role || (sessionUser.claims.email === 'admin@rosae.com' ? 'admin' : 'employee'),
+        };
+        console.log('Returning authenticated user:', userData);
+        res.json({ authenticated: true, user: userData });
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        // Fallback to session data
+        const userData = {
+          id: sessionUser.claims.sub,
+          email: sessionUser.claims.email,
+          firstName: sessionUser.claims.first_name,
+          lastName: sessionUser.claims.last_name,
+          profileImageUrl: sessionUser.claims.profile_image_url,
+          role: sessionUser.claims.email === 'admin@rosae.com' ? 'admin' : 'employee',
+        };
+        res.json({ authenticated: true, user: userData });
+      }
+    } else {
+      console.log('No valid session found');
+      res.json({ authenticated: false });
+    }
+  });
+
+  // Get all users (admin only)
+  app.get('/api/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = req.user;
+      if (currentUser.claims.email !== 'admin@rosae.com') {
+        return res.status(403).json({ message: 'Only admins can view all users' });
+      }
+
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      res.status(500).json({ message: 'Failed to fetch users' });
+    }
+  });
+
+  // Create new user (admin only)
+  app.post('/api/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = req.user;
+      if (currentUser.claims.email !== 'admin@rosae.com') {
+        return res.status(403).json({ message: 'Only admins can create users' });
+      }
+
+      const { email, password, firstName, lastName, role = 'employee' } = req.body;
+
+      if (!email || !password || !firstName || !lastName) {
+        return res.status(400).json({ message: 'Email, password, first name, and last name are required' });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: 'User with this email already exists' });
+      }
+
+      // Create new user
+      const newUser = await storage.createUser({
+        email,
+        password,
+        firstName,
+        lastName,
+        role
+      });
+
+      res.status(201).json(newUser);
+    } catch (error) {
+      console.error('Error creating user:', error);
+      res.status(500).json({ message: 'Failed to create user' });
+    }
+  });
+
+  // Admin routes for admin panel
+  app.get('/api/admin/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = req.user;
+      if (currentUser.claims.email !== 'admin@rosae.com') {
+        return res.status(403).json({ message: 'Only admins can access admin panel' });
+      }
+
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error('Error fetching admin users:', error);
+      res.status(500).json({ message: 'Failed to fetch users' });
+    }
+  });
+
+  app.patch('/api/admin/users/:userId/role', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = req.user;
+      if (currentUser.claims.email !== 'admin@rosae.com') {
+        return res.status(403).json({ message: 'Only admins can update user roles' });
+      }
+
+      const { userId } = req.params;
+      const { role } = req.body;
+
+      if (!role || !['admin', 'employee'].includes(role)) {
+        return res.status(400).json({ message: 'Valid role is required' });
+      }
+
+      const updatedUser = await storage.updateUserRole(userId, role);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      res.status(500).json({ message: 'Failed to update user role' });
+    }
+  });
+
+  // Debug route to check all users (remove in production)
+  app.get('/api/debug/users', async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      console.log('=== DEBUG: All users in database ===');
+      users.forEach(user => {
+        console.log({
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          hasPassword: !!user.passwordHash,
+          passwordLength: user.passwordHash ? user.passwordHash.length : 0
+        });
+      });
+      res.json(users);
+    } catch (error) {
+      console.error('Error fetching users for debug:', error);
+      res.status(500).json({ message: 'Failed to fetch users' });
+    }
+  });
+
+  // Configuration management routes
+  app.get('/api/config', async (req, res) => {
+    try {
+      const config = await storage.getConfig();
+      res.json(config);
+    } catch (error) {
+      console.error('Error fetching config:', error);
+      res.status(500).json({ message: 'Failed to fetch configuration' });
+    }
+  });
+
+  app.post('/api/config', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = req.user;
+      if (currentUser.claims.email !== 'admin@rosae.com') {
+        return res.status(403).json({ message: 'Only admins can update configuration' });
+      }
+
+      const { theatres, timeSlots } = req.body;
+      const config = await storage.updateConfig({ theatres, timeSlots });
+      res.json(config);
+    } catch (error) {
+      console.error('Error updating config:', error);
+      res.status(500).json({ message: 'Failed to update configuration' });
+    }
+  });
+
+  // Delete user (admin only)
+  app.delete('/api/users/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = req.user;
+      if (currentUser.claims.email !== 'admin@rosae.com') {
+        return res.status(403).json({ message: 'Only admins can delete users' });
+      }
+
+      const { userId } = req.params;
+
+      // Prevent deleting the main admin
+      if (userId === 'admin-001') {
+        return res.status(400).json({ message: 'Cannot delete the main administrator' });
+      }
+
+      await storage.deleteUser(userId);
+      res.json({ message: 'User deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      res.status(500).json({ message: 'Failed to delete user' });
+    }
+  });
+
+
 
   // Booking routes
   app.post('/api/bookings', isAuthenticated, async (req: any, res) => {
@@ -112,7 +429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/bookings', isAuthenticated, async (req, res) => {
+  app.get('/api/bookings', isAuthenticated, async (req: any, res) => {
     try {
       const { limit } = req.query;
       const bookings = await storage.getAllBookings(limit ? parseInt(limit as string) : undefined);
@@ -158,7 +475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/expenses', isAuthenticated, async (req, res) => {
+  app.get('/api/expenses', isAuthenticated, async (req: any, res) => {
     try {
       const { limit } = req.query;
       const expenses = await storage.getAllExpenses(limit ? parseInt(limit as string) : undefined);

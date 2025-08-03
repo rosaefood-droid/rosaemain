@@ -7,13 +7,24 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Sidebar } from "@/components/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Users, Settings, TrendingUp } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Shield, Users, Settings, TrendingUp, Plus, X, Edit, Trash2 } from "lucide-react";
+
+interface Config {
+  theatres: string[];
+  timeSlots: string[];
+}
 
 export default function AdminPanel() {
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading } = useAuth();
+  const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
+  const [newTheatre, setNewTheatre] = useState('');
+  const [newTimeSlot, setNewTimeSlot] = useState('');
 
   // Redirect to home if not authenticated or not admin
   useEffect(() => {
@@ -35,6 +46,42 @@ export default function AdminPanel() {
     enabled: user?.role === 'admin',
   });
 
+  const { data: config, isLoading: isConfigLoading } = useQuery<Config>({
+    queryKey: ["/api/config"],
+    enabled: user?.role === 'admin',
+  });
+
+  const updateConfigMutation = useMutation({
+    mutationFn: async (config: Config) => {
+      return await apiRequest("POST", `/api/config`, config);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/config"] });
+      toast({
+        title: "Configuration updated",
+        description: "Theatre and time slot settings have been saved.",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update configuration",
+        variant: "destructive",
+      });
+    },
+  });
+
   const updateUserRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
       return await apiRequest("PATCH", `/api/admin/users/${userId}/role`, { role });
@@ -54,7 +101,7 @@ export default function AdminPanel() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/";
         }, 500);
         return;
       }
@@ -65,6 +112,66 @@ export default function AdminPanel() {
       });
     },
   });
+
+  const handleAddTheatre = () => {
+    if (!newTheatre.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a theatre name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (config) {
+      const updatedConfig = {
+        ...config,
+        theatres: [...config.theatres, newTheatre.trim()]
+      };
+      updateConfigMutation.mutate(updatedConfig);
+      setNewTheatre('');
+    }
+  };
+
+  const handleAddTimeSlot = () => {
+    if (!newTimeSlot.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a time slot",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (config) {
+      const updatedConfig = {
+        ...config,
+        timeSlots: [...config.timeSlots, newTimeSlot.trim()]
+      };
+      updateConfigMutation.mutate(updatedConfig);
+      setNewTimeSlot('');
+    }
+  };
+
+  const handleRemoveTheatre = (theatre: string) => {
+    if (config) {
+      const updatedConfig = {
+        ...config,
+        theatres: config.theatres.filter(t => t !== theatre)
+      };
+      updateConfigMutation.mutate(updatedConfig);
+    }
+  };
+
+  const handleRemoveTimeSlot = (timeSlot: string) => {
+    if (config) {
+      const updatedConfig = {
+        ...config,
+        timeSlots: config.timeSlots.filter(t => t !== timeSlot)
+      };
+      updateConfigMutation.mutate(updatedConfig);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -104,13 +211,11 @@ export default function AdminPanel() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-gray-400 text-sm">Total Users</p>
-                    <p className="text-3xl font-bold text-white" data-testid="text-total-users">
-                      {users?.length || 0}
+                    <p className="text-2xl font-bold text-white">
+                      {isUsersLoading ? "..." : users?.length || 0}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                    <Users className="text-blue-400 text-xl" />
-                  </div>
+                  <Users className="w-8 h-8 text-rosae-red" />
                 </div>
               </CardContent>
             </Card>
@@ -119,14 +224,12 @@ export default function AdminPanel() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-gray-400 text-sm">Admin Users</p>
-                    <p className="text-3xl font-bold text-white" data-testid="text-admin-users">
-                      {users?.filter((u: any) => u.role === 'admin').length || 0}
+                    <p className="text-gray-400 text-sm">Theatres</p>
+                    <p className="text-2xl font-bold text-white">
+                      {isConfigLoading ? "..." : config?.theatres.length || 0}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-rosae-red/20 rounded-lg flex items-center justify-center">
-                    <Shield className="text-rosae-red text-xl" />
-                  </div>
+                  <Settings className="w-8 h-8 text-blue-400" />
                 </div>
               </CardContent>
             </Card>
@@ -135,91 +238,153 @@ export default function AdminPanel() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-gray-400 text-sm">Employees</p>
-                    <p className="text-3xl font-bold text-white" data-testid="text-employee-users">
-                      {users?.filter((u: any) => u.role === 'employee').length || 0}
+                    <p className="text-gray-400 text-sm">Time Slots</p>
+                    <p className="text-2xl font-bold text-white">
+                      {isConfigLoading ? "..." : config?.timeSlots.length || 0}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
-                    <TrendingUp className="text-green-400 text-xl" />
-                  </div>
+                  <TrendingUp className="w-8 h-8 text-green-400" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Configuration Management */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Theatre Management */}
+            <Card className="bg-rosae-dark-gray border-gray-600">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center">
+                  <Settings className="w-5 h-5 mr-2 text-blue-400" />
+                  Theatre Management
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex space-x-2">
+                  <Input
+                    placeholder="Enter theatre name"
+                    value={newTheatre}
+                    onChange={(e) => setNewTheatre(e.target.value)}
+                    className="bg-gray-800 border-gray-600 text-white"
+                  />
+                  <Button
+                    onClick={handleAddTheatre}
+                    disabled={updateConfigMutation.isPending}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                
+                <div className="space-y-2">
+                  {config?.theatres.map((theatre, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                      <span className="text-white">{theatre}</span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRemoveTheatre(theatre)}
+                        className="border-red-600 text-red-400 hover:bg-red-600/20"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Time Slot Management */}
+            <Card className="bg-rosae-dark-gray border-gray-600">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center">
+                  <TrendingUp className="w-5 h-5 mr-2 text-green-400" />
+                  Time Slot Management
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex space-x-2">
+                  <Input
+                    placeholder="Enter time slot (e.g., 10:00 AM - 12:00 PM)"
+                    value={newTimeSlot}
+                    onChange={(e) => setNewTimeSlot(e.target.value)}
+                    className="bg-gray-800 border-gray-600 text-white"
+                  />
+                  <Button
+                    onClick={handleAddTimeSlot}
+                    disabled={updateConfigMutation.isPending}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                
+                <div className="space-y-2">
+                  {config?.timeSlots.map((timeSlot, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                      <span className="text-white">{timeSlot}</span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRemoveTimeSlot(timeSlot)}
+                        className="border-red-600 text-red-400 hover:bg-red-600/20"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
           </div>
 
           {/* User Management */}
-          <Card className="bg-rosae-dark-gray border-gray-600">
+          <Card className="bg-rosae-dark-gray border-gray-600 mt-8">
             <CardHeader>
-              <CardTitle className="text-xl font-semibold text-white flex items-center">
-                <Settings className="mr-2 h-5 w-5" />
-                User Role Management
+              <CardTitle className="text-white flex items-center">
+                <Users className="w-5 h-5 mr-2 text-rosae-red" />
+                User Management
               </CardTitle>
             </CardHeader>
             <CardContent>
               {isUsersLoading ? (
-                <div className="flex items-center justify-center h-64 text-gray-400">
-                  Loading users...
+                <div className="text-center py-8">
+                  <div className="text-gray-400">Loading users...</div>
                 </div>
-              ) : users && users.length > 0 ? (
+              ) : (
                 <div className="space-y-4">
-                  {users.map((userData: any) => (
-                    <div key={userData.id} className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        {userData.profileImageUrl ? (
-                          <img 
-                            src={userData.profileImageUrl} 
-                            alt="User Avatar" 
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-rosae-red/20 rounded-full flex items-center justify-center">
-                            <Users className="w-5 h-5 text-rosae-red" />
-                          </div>
-                        )}
-                        <div>
-                          <p className="text-white font-medium">
-                            {userData.firstName || userData.lastName ? 
-                              `${userData.firstName || ''} ${userData.lastName || ''}`.trim() : 
-                              'Unknown User'
-                            }
-                          </p>
-                          <p className="text-gray-400 text-sm">{userData.email}</p>
-                        </div>
+                  {users?.map((user) => (
+                    <div key={user.id} className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
+                      <div>
+                        <p className="text-white font-medium">
+                          {user.firstName} {user.lastName}
+                        </p>
+                        <p className="text-gray-400 text-sm">{user.email}</p>
                       </div>
-                      
-                      <div className="flex items-center space-x-3">
-                        <Badge variant={userData.role === 'admin' ? 'destructive' : 'secondary'}>
-                          {userData.role === 'admin' ? 'Admin' : 'Employee'}
+                      <div className="flex items-center space-x-2">
+                        <Badge 
+                          className={user.role === 'admin' 
+                            ? 'bg-red-500/20 text-red-400' 
+                            : 'bg-blue-500/20 text-blue-400'
+                          }
+                        >
+                          {user.role}
                         </Badge>
-                        
-                        {userData.id !== user?.id && (
-                          <Select
-                            value={userData.role}
-                            onValueChange={(role) => updateUserRoleMutation.mutate({ userId: userData.id, role })}
-                          >
-                            <SelectTrigger className="w-32 bg-gray-700 border-gray-600 text-white">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-gray-700 border-gray-600">
-                              <SelectItem value="employee">Employee</SelectItem>
-                              <SelectItem value="admin">Admin</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
-                        
-                        {userData.id === user?.id && (
-                          <span className="text-sm text-gray-400">(You)</span>
-                        )}
+                        <Select
+                          value={user.role}
+                          onValueChange={(role) => updateUserRoleMutation.mutate({ userId: user.id, role })}
+                        >
+                          <SelectTrigger className="w-32 bg-gray-700 border-gray-600">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-gray-800 border-gray-600">
+                            <SelectItem value="employee">Employee</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   ))}
-                </div>
-              ) : (
-                <div className="text-center py-16">
-                  <Users className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-white mb-2">No Users Found</h3>
-                  <p className="text-gray-400">No users have been registered yet</p>
                 </div>
               )}
             </CardContent>

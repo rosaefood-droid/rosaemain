@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import React from "react";
 
 export interface User {
   id: string;
@@ -11,14 +12,18 @@ export interface User {
 }
 
 export function useAuth() {
-  const { data: user, isLoading } = useQuery<User>({
-    queryKey: ["/api/auth/user"],
+  const { data: authStatus, isLoading, error } = useQuery<{ authenticated: boolean; user?: User }>({
+    queryKey: ["/api/auth/status"],
     retry: false,
   });
 
+  console.log('useAuth hook - authStatus:', authStatus);
+  console.log('useAuth hook - isLoading:', isLoading);
+  console.log('useAuth hook - error:', error);
+
   return {
-    user,
+    user: authStatus?.user,
     isLoading,
-    isAuthenticated: !!user,
+    isAuthenticated: authStatus?.authenticated || false,
   };
 }
