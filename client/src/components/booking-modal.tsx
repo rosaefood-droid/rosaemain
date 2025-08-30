@@ -46,8 +46,8 @@ export function BookingModal({ isOpen, onClose, onSuccess }: BookingModalProps) 
   });
 
   // Use config data or fallback to defaults
-  const theatreOptions = config?.theatres || DEFAULT_THEATRE_OPTIONS;
-  const timeSlots = config?.timeSlots || DEFAULT_TIME_SLOTS;
+  const theatreOptions = (config as { theatres?: string[] })?.theatres || DEFAULT_THEATRE_OPTIONS;
+  const timeSlots = (config as { timeSlots?: string[] })?.timeSlots || DEFAULT_TIME_SLOTS;
 
   const form = useForm({
     resolver: zodResolver(insertBookingSchema.extend({
@@ -169,7 +169,7 @@ export function BookingModal({ isOpen, onClose, onSuccess }: BookingModalProps) 
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent className="bg-gray-800 border-gray-600">
-                        {theatreOptions.map((theatre) => (
+                        {theatreOptions.map((theatre: string) => (
                           <SelectItem key={theatre} value={theatre}>
                             {theatre}
                           </SelectItem>
@@ -194,7 +194,7 @@ export function BookingModal({ isOpen, onClose, onSuccess }: BookingModalProps) 
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent className="bg-gray-800 border-gray-600">
-                        {timeSlots.map((slot) => (
+                        {timeSlots.map((slot: string) => (
                           <SelectItem key={slot} value={slot}>
                             {slot}
                           </SelectItem>

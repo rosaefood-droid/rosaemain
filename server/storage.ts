@@ -1,248 +1,10 @@
-import { sql, eq } from "drizzle-orm";
-import {
-  index,
-  sqliteTable,
-  text,
-  integer,
-  real,
-} from "drizzle-orm/sqlite-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod";
+import { sql, eq, desc } from "drizzle-orm";
 import { db } from "./db";
-
-
-
-// Sessions
-export const sessions = sqliteTable(
-  "sessions",
-  {
-    sid: text("sid").primaryKey(),
-    sess: text("sess").notNull(),
-    expire: text("expire").notNull(),
-  },
-  (table) => [index("IDX_session_expire").on(table.expire)]
-);
-
-// Users
-export const users = sqliteTable("users", {
-  id: text("id")
-    .primaryKey()
-    .default(
-      sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)),2) || '-' ||
-           substr('89ab',abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`
-    ),
-  email: text("email").unique(),
-  firstName: text("first_name"),
-  lastName: text("last_name"),
-  profileImageUrl: text("profile_image_url"),
-  passwordHash: text("password_hash"),
-  role: text("role").default("employee"),
-  createdAt: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
-  updatedAt: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
-});
-
-// Bookings
-export const bookings = sqliteTable("bookings", {
-  id: text("id").primaryKey().default(
-    sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
-         substr(hex(randomblob(2)),2) || '-' ||
-         substr('89ab',abs(random()) % 4 + 1, 1) ||
-         substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`
-  ),
-  theatreName: text("theatre_name").notNull(),
-  timeSlot: text("time_slot").notNull(),
-  guests: integer("guests").notNull(),
-  totalAmount: real("total_amount").notNull().default(0),
-  cashAmount: real("cash_amount").notNull().default(0),
-  upiAmount: real("upi_amount").notNull().default(0),
-  snacksAmount: real("snacks_amount").notNull().default(0),
-  snacksCash: real("snacks_cash").notNull().default(0),
-  snacksUpi: real("snacks_upi").notNull().default(0),
-  bookingDate: text("booking_date").notNull(),
-  createdBy: text("created_by").references(() => users.id),
-  createdAt: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
-});
-
-// Expenses
-export const expenses = sqliteTable("expenses", {
-  id: text("id").primaryKey().default(
-    sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
-         substr(hex(randomblob(2)),2) || '-' ||
-         substr('89ab',abs(random()) % 4 + 1, 1) ||
-         substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`
-  ),
-  category: text("category").notNull(),
-  description: text("description").notNull(),
-  amount: real("amount").notNull(),
-  expenseDate: text("expense_date").notNull(),
-  createdBy: text("created_by").references(() => users.id),
-  createdAt: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
-});
-
-// Leave Applications
-export const leaveApplications = sqliteTable("leave_applications", {
-  id: text("id").primaryKey().default(
-    sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
-         substr(hex(randomblob(2)),2) || '-' ||
-         substr('89ab',abs(random()) % 4 + 1, 1) ||
-         substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`
-  ),
-  userId: text("user_id").references(() => users.id).notNull(),
-  startDate: text("start_date").notNull(),
-  endDate: text("end_date").notNull(),
-  reason: text("reason").notNull(),
-  status: text("status").default("pending"),
-  reviewedBy: text("reviewed_by").references(() => users.id),
-  reviewedAt: text("reviewed_at"),
-  createdAt: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
-});
-
-// Activity Logs
-export const activityLogs = sqliteTable("activity_logs", {
-  id: text("id").primaryKey().default(
-    sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
-         substr(hex(randomblob(2)),2) || '-' ||
-         substr('89ab',abs(random()) % 4 + 1, 1) ||
-         substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`
-  ),
-  userId: text("user_id").references(() => users.id).notNull(),
-  action: text("action").notNull(),
-  resourceType: text("resource_type").notNull(),
-  resourceId: text("resource_id"),
-  details: text("details"),
-  createdAt: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
-});
-
-// Calendar Events
-export const calendarEvents = sqliteTable("calendar_events", {
-  id: text("id").primaryKey().default(
-    sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
-         substr(hex(randomblob(2)),2) || '-' ||
-         substr('89ab',abs(random()) % 4 + 1, 1) ||
-         substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`
-  ),
-  bookingId: text("booking_id").references(() => bookings.id).notNull(),
-  googleCalendarEventId: text("google_calendar_event_id"),
-  title: text("title").notNull(),
-  description: text("description"),
-  startTime: text("start_time").notNull(),
-  endTime: text("end_time").notNull(),
-  location: text("location"),
-  status: text("status").default("confirmed"),
-  createdAt: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
-  updatedAt: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
-});
-
-// Sales Reports
-export const salesReports = sqliteTable("sales_reports", {
-  id: text("id").primaryKey().default(
-    sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
-         substr(hex(randomblob(2)),2) || '-' ||
-         substr('89ab',abs(random()) % 4 + 1, 1) ||
-         substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`
-  ),
-  reportDate: text("report_date").notNull(),
-  totalRevenue: real("total_revenue").notNull().default(0),
-  foodSales: real("food_sales").notNull().default(0),
-  screenSales: real("screen_sales").notNull().default(0),
-  totalBookings: integer("total_bookings").notNull().default(0),
-  totalGuests: integer("total_guests").notNull().default(0),
-  avgBookingValue: real("avg_booking_value").notNull().default(0),
-  createdBy: text("created_by").references(() => users.id),
-  createdAt: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
-});
-
-// Configurations
-export const configurations = sqliteTable("configurations", {
-  key: text("key").primaryKey(),
-  value: text("value").notNull(),
-  updatedBy: text("updated_by").references(() => users.id),
-  updatedAt: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
-});
-
-/* ---------------- SCHEMAS ---------------- */
-
-export const insertBookingSchema = createInsertSchema(bookings).omit({
-  id: true,
-  createdBy: true,
-  createdAt: true,
-}).extend({
-  guests: z.coerce.number().min(1),
-  totalAmount: z.coerce.number().min(0),
-  cashAmount: z.coerce.number().min(0),
-  upiAmount: z.coerce.number().min(0),
-  snacksAmount: z.coerce.number().min(0).optional(),
-  snacksCash: z.coerce.number().min(0).optional(),
-  snacksUpi: z.coerce.number().min(0).optional(),
-});
-
-export const insertExpenseSchema = createInsertSchema(expenses).omit({
-  id: true,
-  createdBy: true,
-  createdAt: true,
-}).extend({
-  amount: z.coerce.number().min(0),
-});
-
-export const insertLeaveApplicationSchema = createInsertSchema(leaveApplications).omit({
-  id: true,
-  status: true,
-  reviewedBy: true,
-  reviewedAt: true,
-  createdAt: true,
-});
-
-export const upsertUserSchema = createInsertSchema(users).pick({
-  id: true,
-  email: true,
-  firstName: true,
-  lastName: true,
-  profileImageUrl: true,
-  role: true,
-});
-
-export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertSalesReportSchema = createInsertSchema(salesReports).omit({
-  id: true,
-  createdBy: true,
-  createdAt: true,
-}).extend({
-  totalRevenue: z.coerce.number().min(0),
-  foodSales: z.coerce.number().min(0),
-  screenSales: z.coerce.number().min(0),
-  totalBookings: z.coerce.number().min(0),
-  totalGuests: z.coerce.number().min(0),
-  avgBookingValue: z.coerce.number().min(0),
-});
-
-export const insertConfigurationSchema = createInsertSchema(configurations).omit({
-  updatedAt: true,
-});
-
-/* ---------------- TYPES ---------------- */
-export type UpsertUser = z.infer<typeof upsertUserSchema>;
-export type User = typeof users.$inferSelect;
-export type InsertBooking = z.infer<typeof insertBookingSchema>;
-export type Booking = typeof bookings.$inferSelect;
-export type InsertExpense = z.infer<typeof insertExpenseSchema>;
-export type Expense = typeof expenses.$inferSelect;
-export type InsertConfiguration = z.infer<typeof insertConfigurationSchema>;
-export type Configuration = typeof configurations.$inferSelect;
-export type InsertLeaveApplication = z.infer<typeof insertLeaveApplicationSchema>;
-export type LeaveApplication = typeof leaveApplications.$inferSelect;
-export type ActivityLog = typeof activityLogs.$inferSelect;
-export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
-export type CalendarEvent = typeof calendarEvents.$inferSelect;
-export type InsertSalesReport = z.infer<typeof insertSalesReportSchema>;
-export type SalesReport = typeof salesReports.$inferSelect;
-
-// Define schema object after all tables are defined
-const schema = { users, bookings, expenses, leaveApplications, activityLogs, calendarEvents, salesReports, configurations };
+import { 
+  users, bookings, expenses, leaveApplications, activityLogs, 
+  calendarEvents, salesReports, configurations 
+} from "@shared/schema";
+import bcrypt from "bcryptjs";
 
 // Create a storage interface for database operations
 export const storage = {
@@ -271,29 +33,75 @@ export const storage = {
     });
   },
   
-  async createUser(user: any) {
-    return db.insert(users).values(user).returning();
+  async createUser(userData: { email: string; password: string; firstName: string; lastName: string; role?: string }) {
+    const passwordHash = await bcrypt.hash(userData.password, 10);
+    const user = {
+      email: userData.email,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      passwordHash,
+      role: userData.role || 'employee'
+    };
+    const result = await db.insert(users).values(user).returning();
+    return result[0];
   },
   
-  async upsertUser(user: any) {
+  async upsertUser(userData: any) {
     // Check if user exists
-    const existingUser = await this.getUser(user.id);
+    const existingUser = await this.getUser(userData.id);
     
     if (existingUser) {
       // Update existing user
-      return db.update(users)
-        .set(user)
-        .where(eq(users.id, user.id))
+      const result = await db.update(users)
+        .set(userData)
+        .where(eq(users.id, userData.id))
         .returning();
+      return result[0];
     } else {
       // Create new user
-      return this.createUser(user);
+      const result = await db.insert(users).values(userData).returning();
+      return result[0];
     }
+  },
+
+  async updateUserRole(userId: string, role: string) {
+    const result = await db.update(users)
+      .set({ role })
+      .where(eq(users.id, userId))
+      .returning();
+    return result[0];
+  },
+
+  async deleteUser(userId: string) {
+    await db.delete(users).where(eq(users.id, userId));
   },
   
   // Booking operations
-  async createBooking(booking: any) {
-    return db.insert(bookings).values(booking).returning();
+  async createBooking(bookingData: any) {
+    const result = await db.insert(bookings).values(bookingData).returning();
+    return result[0];
+  },
+
+  async updateBooking(bookingId: string, updateData: any) {
+    const result = await db.update(bookings)
+      .set(updateData)
+      .where(eq(bookings.id, bookingId))
+      .returning();
+    return result[0];
+  },
+
+  async deleteBooking(bookingId: string) {
+    await db.delete(bookings).where(eq(bookings.id, bookingId));
+  },
+
+  async getBookingsByDateRange(startDate: string, endDate: string) {
+    return db.query.bookings.findMany({
+      where: (bookings, { and, gte, lte }) => and(
+        gte(bookings.bookingDate, startDate),
+        lte(bookings.bookingDate, endDate)
+      ),
+      orderBy: [desc(bookings.createdAt)]
+    });
   },
   
   async getAllBookings(page: number = 1, pageSize: number = 10) {
@@ -322,9 +130,82 @@ export const storage = {
     };
   },
   
+  // Expense operations
+  async createExpense(expenseData: any) {
+    const result = await db.insert(expenses).values(expenseData).returning();
+    return result[0];
+  },
+
+  async getAllExpenses(limit?: number) {
+    return db.query.expenses.findMany({
+      orderBy: [desc(expenses.createdAt)],
+      limit: limit
+    });
+  },
+
+  async getExpensesByCategory(category: string) {
+    return db.query.expenses.findMany({
+      where: eq(expenses.category, category),
+      orderBy: [desc(expenses.createdAt)]
+    });
+  },
+
+  async getExpensesByDateRange(startDate: string, endDate: string) {
+    return db.query.expenses.findMany({
+      where: (expenses, { and, gte, lte }) => and(
+        gte(expenses.expenseDate, startDate),
+        lte(expenses.expenseDate, endDate)
+      ),
+      orderBy: [desc(expenses.createdAt)]
+    });
+  },
+
+  // Leave application operations
+  async createLeaveApplication(leaveData: any) {
+    const result = await db.insert(leaveApplications).values(leaveData).returning();
+    return result[0];
+  },
+
+  async getLeaveApplications() {
+    return db.query.leaveApplications.findMany({
+      orderBy: [desc(leaveApplications.createdAt)]
+    });
+  },
+
+  async updateLeaveStatus(applicationId: string, status: string, reviewedBy: string) {
+    const result = await db.update(leaveApplications)
+      .set({ 
+        status, 
+        reviewedBy, 
+        reviewedAt: new Date().toISOString()
+      })
+      .where(eq(leaveApplications.id, applicationId))
+      .returning();
+    return result[0];
+  },
+
   // Calendar operations
-  async createCalendarEvent(event: any) {
-    return db.insert(calendarEvents).values(event).returning();
+  async createCalendarEvent(eventData: any) {
+    const result = await db.insert(calendarEvents).values(eventData).returning();
+    return result[0];
+  },
+
+  async getCalendarEventByBookingId(bookingId: string) {
+    return db.query.calendarEvents.findFirst({
+      where: eq(calendarEvents.bookingId, bookingId)
+    });
+  },
+
+  async updateCalendarEvent(eventId: string, updateData: any) {
+    const result = await db.update(calendarEvents)
+      .set(updateData)
+      .where(eq(calendarEvents.id, eventId))
+      .returning();
+    return result[0];
+  },
+
+  async deleteCalendarEvent(eventId: string) {
+    await db.delete(calendarEvents).where(eq(calendarEvents.id, eventId));
   },
   
   // Activity log operations
@@ -470,6 +351,18 @@ export const storage = {
     }
   },
   
-  // Other necessary database operations
-  // Add more methods as needed for your application
+  // Sales report operations
+  async getSalesReports() {
+    return db.query.salesReports.findMany({
+      orderBy: [desc(salesReports.createdAt)]
+    });
+  },
+
+  async generateDailySalesReport(reportDate: string, reportData: any) {
+    const result = await db.insert(salesReports).values({
+      reportDate,
+      ...reportData
+    }).returning();
+    return result[0];
+  }
 };

@@ -913,25 +913,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Booking edit and delete routes
-  app.put('/api/bookings/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/bookings/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { id } = req.params;
-      const bookingData = insertBookingSchema.parse(req.body);
       
-      const updatedBooking = await storage.updateBooking(id, bookingData);
+      // Only validate the fields that can be updated
+      const updateData = {
+        guests: req.body.guests ? Number(req.body.guests) : undefined,
+        phoneNumber: req.body.phoneNumber || null,
+        cashAmount: req.body.cashAmount ? Number(req.body.cashAmount) : undefined,
+        upiAmount: req.body.upiAmount ? Number(req.body.upiAmount) : undefined,
+      };
       
-      // Update calendar event
+      // Remove undefined fields
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] === undefined) {
+          delete updateData[key];
+        }
+      });
+      
+      const updatedBooking = await storage.updateBooking(id, updateData);
+      
+      // Update calendar event if it exists
       try {
         const calendarEvent = await storage.getCalendarEventByBookingId(id);
-        if (calendarEvent) {
-          await createCalendarEvent(updatedBooking);
+        if (calendarEvent && updatedBooking) {
+          const phoneInfo = updatedBooking.phoneNumber ? ` Phone: ${updatedBooking.phoneNumber}.` : '';
+          await storage.updateCalendarEvent(calendarEvent.id, {
+            title: `${updatedBooking.theatreName} Booking - ${updatedBooking.guests} guests`,
+            description: `Theatre booking for ${updatedBooking.guests} guests. Total: ₹${updatedBooking.totalAmount}.${phoneInfo} Updated by: ${userId}`,
+          });
         }
       } catch (calendarError) {
         console.error("Failed to update calendar event:", calendarError);
       }
 
-      await storage.logActivity(userId, "UPDATE", "BOOKING", id, `Updated booking for ${bookingData.theatreName}`);
+      await storage.logActivity(userId, "UPDATE", "BOOKING", id, `Updated booking details`);
       
       res.json(updatedBooking);
     } catch (error) {
@@ -944,19 +962,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const { id } = req.params;
+      const { reason, comment } = req.body;
+      
+      if (!reason) {
+        return res.status(400).json({ message: "Reason for deletion is required" });
+      }
       
       // Delete calendar event first
       try {
-        await storage.deleteCalendarEvent(id);
-        await sendWebhookNotification('delete', { bookingId: id });
+        const calendarEvent = await storage.getCalendarEventByBookingId(id);
+        if (calendarEvent) {
+          await storage.deleteCalendarEvent(calendarEvent.id);
+        }
+        await sendWebhookNotification('delete', { bookingId: id, reason, comment });
       } catch (calendarError) {
         console.error("Failed to delete calendar event:", calendarError);
       }
       
       await storage.deleteBooking(id);
-      await storage.logActivity(userId, "DELETE", "BOOKING", id, "Deleted booking");
+      const logDetails = `Deleted booking - Reason: ${reason}${comment ? `, Comment: ${comment}` : ''}`;
+      await storage.logActivity(userId, "DELETE", "BOOKING", id, logDetails);
       
-      res.json({ success: true });
+      res.json({ success: true, message: "Booking deleted successfully" });
     } catch (error) {
       console.error("Error deleting booking:", error);
       res.status(500).json({ message: "Failed to delete booking" });
