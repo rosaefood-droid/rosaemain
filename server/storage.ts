@@ -1,389 +1,475 @@
-import crypto from "crypto";
+import { sql, eq } from "drizzle-orm";
 import {
-  users,
-  bookings,
-  expenses,
-  leaveApplications,
-  activityLogs,
-  customerTickets,
-  calendarEvents,
-  salesReports,
-  type User,
-  type UpsertUser,
-  type InsertBooking,
-  type Booking,
-  type InsertExpense,
-  type Expense,
-  type InsertLeaveApplication,
-  type LeaveApplication,
-  type ActivityLog,
-  type InsertCustomerTicket,
-  type CustomerTicket,
-  type InsertCalendarEvent,
-  type CalendarEvent,
-  type InsertSalesReport,
-  type SalesReport,
-} from "@shared/schema";
+  index,
+  sqliteTable,
+  text,
+  integer,
+  real,
+} from "drizzle-orm/sqlite-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
 import { db } from "./db";
-import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
-import { hashPassword } from "./auth";
 
-export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  upsertUser(user: UpsertUser): Promise<User>;
 
-  createBooking(booking: InsertBooking): Promise<Booking>;
-  getAllBookings(limit?: number): Promise<Booking[]>;
-  getBookingsByDateRange(startDate: string, endDate: string): Promise<Booking[]>;
-  updateBooking(id: string, booking: Partial<InsertBooking>): Promise<Booking>;
-  deleteBooking(id: string): Promise<void>;
 
-  createExpense(expense: InsertExpense): Promise<Expense>;
-  getAllExpenses(limit?: number): Promise<Expense[]>;
-  getExpensesByDateRange(startDate: string, endDate: string): Promise<Expense[]>;
-  getExpensesByCategory(category: string): Promise<Expense[]>;
+// Sessions
+export const sessions = sqliteTable(
+  "sessions",
+  {
+    sid: text("sid").primaryKey(),
+    sess: text("sess").notNull(),
+    expire: text("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)]
+);
 
-  createLeaveApplication(leave: InsertLeaveApplication): Promise<LeaveApplication>;
-  getLeaveApplications(): Promise<LeaveApplication[]>;
-  updateLeaveStatus(id: string, status: string, reviewedBy: string): Promise<LeaveApplication>;
+// Users
+export const users = sqliteTable("users", {
+  id: text("id")
+    .primaryKey()
+    .default(
+      sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)),2) || '-' ||
+           substr('89ab',abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`
+    ),
+  email: text("email").unique(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  profileImageUrl: text("profile_image_url"),
+  passwordHash: text("password_hash"),
+  role: text("role").default("employee"),
+  createdAt: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+  updatedAt: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+});
 
-  createCustomerTicket(ticket: InsertCustomerTicket): Promise<CustomerTicket>;
-  getAllCustomerTickets(): Promise<CustomerTicket[]>;
-  updateTicketStatus(id: string, status: string, assignedTo?: string): Promise<CustomerTicket>;
+// Bookings
+export const bookings = sqliteTable("bookings", {
+  id: text("id").primaryKey().default(
+    sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
+         substr(hex(randomblob(2)),2) || '-' ||
+         substr('89ab',abs(random()) % 4 + 1, 1) ||
+         substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`
+  ),
+  theatreName: text("theatre_name").notNull(),
+  timeSlot: text("time_slot").notNull(),
+  guests: integer("guests").notNull(),
+  totalAmount: real("total_amount").notNull().default(0),
+  cashAmount: real("cash_amount").notNull().default(0),
+  upiAmount: real("upi_amount").notNull().default(0),
+  snacksAmount: real("snacks_amount").notNull().default(0),
+  snacksCash: real("snacks_cash").notNull().default(0),
+  snacksUpi: real("snacks_upi").notNull().default(0),
+  bookingDate: text("booking_date").notNull(),
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+});
 
-  createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
-  updateCalendarEvent(id: string, event: Partial<InsertCalendarEvent>): Promise<CalendarEvent>;
-  deleteCalendarEvent(bookingId: string): Promise<void>;
-  getCalendarEventByBookingId(bookingId: string): Promise<CalendarEvent | undefined>;
+// Expenses
+export const expenses = sqliteTable("expenses", {
+  id: text("id").primaryKey().default(
+    sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
+         substr(hex(randomblob(2)),2) || '-' ||
+         substr('89ab',abs(random()) % 4 + 1, 1) ||
+         substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`
+  ),
+  category: text("category").notNull(),
+  description: text("description").notNull(),
+  amount: real("amount").notNull(),
+  expenseDate: text("expense_date").notNull(),
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+});
 
-  createSalesReport(report: InsertSalesReport): Promise<SalesReport>;
-  getSalesReports(startDate: string, endDate: string): Promise<SalesReport[]>;
-  generateDailySalesReport(date: string): Promise<SalesReport>;
+// Leave Applications
+export const leaveApplications = sqliteTable("leave_applications", {
+  id: text("id").primaryKey().default(
+    sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
+         substr(hex(randomblob(2)),2) || '-' ||
+         substr('89ab',abs(random()) % 4 + 1, 1) ||
+         substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`
+  ),
+  userId: text("user_id").references(() => users.id).notNull(),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date").notNull(),
+  reason: text("reason").notNull(),
+  status: text("status").default("pending"),
+  reviewedBy: text("reviewed_by").references(() => users.id),
+  reviewedAt: text("reviewed_at"),
+  createdAt: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+});
 
-  getDailyRevenue(days: number): Promise<Array<{ date: string; revenue: number; bookings: number }>>;
-  getPaymentMethodBreakdown(): Promise<{ cash: number; upi: number }>;
-  getTimeSlotPerformance(): Promise<Array<{ timeSlot: string; bookings: number; revenue: number }>>;
+// Activity Logs
+export const activityLogs = sqliteTable("activity_logs", {
+  id: text("id").primaryKey().default(
+    sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
+         substr(hex(randomblob(2)),2) || '-' ||
+         substr('89ab',abs(random()) % 4 + 1, 1) ||
+         substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`
+  ),
+  userId: text("user_id").references(() => users.id).notNull(),
+  action: text("action").notNull(),
+  resourceType: text("resource_type").notNull(),
+  resourceId: text("resource_id"),
+  details: text("details"),
+  createdAt: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+});
 
-  logActivity(userId: string, action: string, resourceType: string, resourceId?: string, details?: string): Promise<void>;
+// Calendar Events
+export const calendarEvents = sqliteTable("calendar_events", {
+  id: text("id").primaryKey().default(
+    sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
+         substr(hex(randomblob(2)),2) || '-' ||
+         substr('89ab',abs(random()) % 4 + 1, 1) ||
+         substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`
+  ),
+  bookingId: text("booking_id").references(() => bookings.id).notNull(),
+  googleCalendarEventId: text("google_calendar_event_id"),
+  title: text("title").notNull(),
+  description: text("description"),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  location: text("location"),
+  status: text("status").default("confirmed"),
+  createdAt: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+  updatedAt: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+});
 
-  getAllUsers(): Promise<User[]>;
-  updateUserRole(id: string, role: string): Promise<User>;
-}
+// Sales Reports
+export const salesReports = sqliteTable("sales_reports", {
+  id: text("id").primaryKey().default(
+    sql`(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' ||
+         substr(hex(randomblob(2)),2) || '-' ||
+         substr('89ab',abs(random()) % 4 + 1, 1) ||
+         substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6)))`
+  ),
+  reportDate: text("report_date").notNull(),
+  totalRevenue: real("total_revenue").notNull().default(0),
+  foodSales: real("food_sales").notNull().default(0),
+  screenSales: real("screen_sales").notNull().default(0),
+  totalBookings: integer("total_bookings").notNull().default(0),
+  totalGuests: integer("total_guests").notNull().default(0),
+  avgBookingValue: real("avg_booking_value").notNull().default(0),
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: text("created_at").default(sql`(CURRENT_TIMESTAMP)`),
+});
 
-export class DatabaseStorage implements IStorage {
-  async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
-  }
+// Configurations
+export const configurations = sqliteTable("configurations", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedBy: text("updated_by").references(() => users.id),
+  updatedAt: text("updated_at").default(sql`(CURRENT_TIMESTAMP)`),
+});
 
-  async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
-  }
+/* ---------------- SCHEMAS ---------------- */
 
-  async upsertUser(userData: UpsertUser): Promise<User> {
-    try {
-      const [user] = await db.insert(users).values(userData).returning();
-      return user;
-    } catch {
-      const [user] = await db
-        .update(users)
-        .set({ ...userData, updatedAt: new Date().toISOString() })
-        .where(eq(users.id, userData.id!))
-        .returning();
-      return user;
-    }
-  }
+export const insertBookingSchema = createInsertSchema(bookings).omit({
+  id: true,
+  createdBy: true,
+  createdAt: true,
+}).extend({
+  guests: z.coerce.number().min(1),
+  totalAmount: z.coerce.number().min(0),
+  cashAmount: z.coerce.number().min(0),
+  upiAmount: z.coerce.number().min(0),
+  snacksAmount: z.coerce.number().min(0).optional(),
+  snacksCash: z.coerce.number().min(0).optional(),
+  snacksUpi: z.coerce.number().min(0).optional(),
+});
 
-  async createBooking(booking: InsertBooking): Promise<Booking> {
-    const [newBooking] = await db
-      .insert(bookings)
-      .values({
-        ...booking,
-        snacksAmount: booking.snacksAmount || 0,
-        snacksCash: booking.snacksCash || 0,
-        snacksUpi: booking.snacksUpi || 0,
-      })
-      .returning();
-    return newBooking;
-  }
+export const insertExpenseSchema = createInsertSchema(expenses).omit({
+  id: true,
+  createdBy: true,
+  createdAt: true,
+}).extend({
+  amount: z.coerce.number().min(0),
+});
 
-  async getAllBookings(limit = 50): Promise<Booking[]> {
-    return db.select().from(bookings).orderBy(desc(bookings.createdAt)).limit(limit);
-  }
+export const insertLeaveApplicationSchema = createInsertSchema(leaveApplications).omit({
+  id: true,
+  status: true,
+  reviewedBy: true,
+  reviewedAt: true,
+  createdAt: true,
+});
 
-  async getBookingsByDateRange(startDate: string, endDate: string): Promise<Booking[]> {
-    return db
-      .select()
-      .from(bookings)
-      .where(and(gte(bookings.bookingDate, startDate), lte(bookings.bookingDate, endDate)))
-      .orderBy(desc(bookings.bookingDate));
-  }
+export const upsertUserSchema = createInsertSchema(users).pick({
+  id: true,
+  email: true,
+  firstName: true,
+  lastName: true,
+  profileImageUrl: true,
+  role: true,
+});
 
-  async updateBooking(id: string, booking: Partial<InsertBooking>): Promise<Booking> {
-    const [updated] = await db
-      .update(bookings)
-      .set(booking)
-      .where(eq(bookings.id, id))
-      .returning();
-    return updated;
-  }
+export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 
-  async deleteBooking(id: string): Promise<void> {
-    await db.delete(bookings).where(eq(bookings.id, id));
-  }
+export const insertSalesReportSchema = createInsertSchema(salesReports).omit({
+  id: true,
+  createdBy: true,
+  createdAt: true,
+}).extend({
+  totalRevenue: z.coerce.number().min(0),
+  foodSales: z.coerce.number().min(0),
+  screenSales: z.coerce.number().min(0),
+  totalBookings: z.coerce.number().min(0),
+  totalGuests: z.coerce.number().min(0),
+  avgBookingValue: z.coerce.number().min(0),
+});
 
-  async createExpense(expense: InsertExpense): Promise<Expense> {
-    const [newExpense] = await db.insert(expenses).values(expense).returning();
-    return newExpense;
-  }
+export const insertConfigurationSchema = createInsertSchema(configurations).omit({
+  updatedAt: true,
+});
 
-  async getAllExpenses(limit = 50): Promise<Expense[]> {
-    return db.select().from(expenses).orderBy(desc(expenses.createdAt)).limit(limit);
-  }
+/* ---------------- TYPES ---------------- */
+export type UpsertUser = z.infer<typeof upsertUserSchema>;
+export type User = typeof users.$inferSelect;
+export type InsertBooking = z.infer<typeof insertBookingSchema>;
+export type Booking = typeof bookings.$inferSelect;
+export type InsertExpense = z.infer<typeof insertExpenseSchema>;
+export type Expense = typeof expenses.$inferSelect;
+export type InsertConfiguration = z.infer<typeof insertConfigurationSchema>;
+export type Configuration = typeof configurations.$inferSelect;
+export type InsertLeaveApplication = z.infer<typeof insertLeaveApplicationSchema>;
+export type LeaveApplication = typeof leaveApplications.$inferSelect;
+export type ActivityLog = typeof activityLogs.$inferSelect;
+export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
+export type InsertSalesReport = z.infer<typeof insertSalesReportSchema>;
+export type SalesReport = typeof salesReports.$inferSelect;
 
-  async getExpensesByDateRange(startDate: string, endDate: string): Promise<Expense[]> {
-    return db
-      .select()
-      .from(expenses)
-      .where(and(gte(expenses.expenseDate, startDate), lte(expenses.expenseDate, endDate)))
-      .orderBy(desc(expenses.expenseDate));
-  }
+// Define schema object after all tables are defined
+const schema = { users, bookings, expenses, leaveApplications, activityLogs, calendarEvents, salesReports, configurations };
 
-  async getExpensesByCategory(category: string): Promise<Expense[]> {
-    return db.select().from(expenses).where(eq(expenses.category, category)).orderBy(desc(expenses.expenseDate));
-  }
-
-  async createLeaveApplication(leave: InsertLeaveApplication): Promise<LeaveApplication> {
-    const [newLeave] = await db.insert(leaveApplications).values(leave).returning();
-    return newLeave;
-  }
-
-  async getLeaveApplications(): Promise<LeaveApplication[]> {
-    return db.select().from(leaveApplications).orderBy(desc(leaveApplications.createdAt));
-  }
-
-  async updateLeaveStatus(id: string, status: string, reviewedBy: string): Promise<LeaveApplication> {
-    const [updatedLeave] = await db
-      .update(leaveApplications)
-      .set({ status, reviewedBy, reviewedAt: new Date().toISOString() })
-      .where(eq(leaveApplications.id, id))
-      .returning();
-    return updatedLeave;
-  }
-
-  async createCustomerTicket(ticket: InsertCustomerTicket): Promise<CustomerTicket> {
-    const [newTicket] = await db.insert(customerTickets).values(ticket).returning();
-    return newTicket;
-  }
-
-  async getAllCustomerTickets(): Promise<CustomerTicket[]> {
-    return db.select().from(customerTickets).orderBy(desc(customerTickets.createdAt));
-  }
-
-  async updateTicketStatus(id: string, status: string, assignedTo?: string): Promise<CustomerTicket> {
-    const [updated] = await db
-      .update(customerTickets)
-      .set({ status, assignedTo, updatedAt: new Date().toISOString() })
-      .where(eq(customerTickets.id, id))
-      .returning();
-    return updated;
-  }
-
-  async createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent> {
-    const [newEvent] = await db.insert(calendarEvents).values(event).returning();
-    return newEvent;
-  }
-
-  async updateCalendarEvent(id: string, event: Partial<InsertCalendarEvent>): Promise<CalendarEvent> {
-    const [updated] = await db
-      .update(calendarEvents)
-              .set({ ...event, updatedAt: new Date().toISOString() })
-      .where(eq(calendarEvents.id, id))
-      .returning();
-    return updated;
-  }
-
-  async deleteCalendarEvent(bookingId: string): Promise<void> {
-    await db.delete(calendarEvents).where(eq(calendarEvents.bookingId, bookingId));
-  }
-
-  async getCalendarEventByBookingId(bookingId: string): Promise<CalendarEvent | undefined> {
-    const [event] = await db.select().from(calendarEvents).where(eq(calendarEvents.bookingId, bookingId));
-    return event;
-  }
-
-  async createSalesReport(report: InsertSalesReport): Promise<SalesReport> {
-    const [newReport] = await db.insert(salesReports).values(report).returning();
-    return newReport;
-  }
-
-  async getSalesReports(startDate: string, endDate: string): Promise<SalesReport[]> {
-    return db
-      .select()
-      .from(salesReports)
-      .where(and(gte(salesReports.reportDate, startDate), lte(salesReports.reportDate, endDate)))
-      .orderBy(desc(salesReports.reportDate));
-  }
-
-  async generateDailySalesReport(date: string): Promise<SalesReport> {
-    const [totals] = await db
-      .select({
-        totalRevenue: sql<number>`COALESCE(SUM(${bookings.totalAmount}), 0)`,
-        foodSales: sql<number>`COALESCE(SUM(${bookings.snacksAmount}), 0)`,
-        screenSales: sql<number>`COALESCE(SUM(${bookings.totalAmount} - ${bookings.snacksAmount}), 0)`,
-        totalBookings: sql<number>`COUNT(*)`,
-        totalGuests: sql<number>`COALESCE(SUM(${bookings.guests}), 0)`,
-      })
-      .from(bookings)
-      .where(eq(bookings.bookingDate, date));
-
-    const avgBookingValue = totals.totalBookings > 0 ? totals.totalRevenue / totals.totalBookings : 0;
-
-    return this.createSalesReport({
-      reportDate: date,
-      totalRevenue: totals.totalRevenue.toString(),
-      foodSales: totals.foodSales.toString(),
-      screenSales: totals.screenSales.toString(),
-      totalBookings: totals.totalBookings,
-      totalGuests: totals.totalGuests,
-      avgBookingValue: avgBookingValue.toString(),
+// Create a storage interface for database operations
+export const storage = {
+  // User operations
+  async findUserByEmail(email: string) {
+    return db.query.users.findFirst({
+      where: eq(users.email, email),
     });
-  }
-
-  async getDailyRevenue(days: number): Promise<Array<{ date: string; revenue: number; bookings: number }>> {
-    const result = await db
-      .select({
-        date: bookings.bookingDate,
-        revenue: sql<number>`COALESCE(SUM(${bookings.totalAmount} + ${bookings.snacksAmount}), 0)`,
-        bookings: sql<number>`COUNT(*)`,
-      })
-      .from(bookings)
-      .where(gte(bookings.bookingDate, sql`date('now', '-${sql.raw(days.toString())} days')`))
-      .groupBy(bookings.bookingDate)
-      .orderBy(bookings.bookingDate);
-
-    return result.map(row => ({
-      date: row.date,
-      revenue: Number(row.revenue),
-      bookings: Number(row.bookings),
-    }));
-  }
-
-  async getPaymentMethodBreakdown(): Promise<{ cash: number; upi: number }> {
-    const [result] = await db
-      .select({
-        cash: sql<number>`COALESCE(SUM(${bookings.cashAmount} + ${bookings.snacksCash}), 0)`,
-        upi: sql<number>`COALESCE(SUM(${bookings.upiAmount} + ${bookings.snacksUpi}), 0)`,
-      })
-      .from(bookings);
-
+  },
+  
+  async getUserByEmail(email: string) {
+    return db.query.users.findFirst({
+      where: eq(users.email, email),
+    });
+  },
+  
+  async getUser(id: string) {
+    return db.query.users.findFirst({
+      where: eq(users.id, id),
+    });
+  },
+  
+  async getAllUsers() {
+    return db.query.users.findMany({
+      orderBy: (users, { asc }) => [asc(users.firstName)],
+    });
+  },
+  
+  async createUser(user: any) {
+    return db.insert(users).values(user).returning();
+  },
+  
+  async upsertUser(user: any) {
+    // Check if user exists
+    const existingUser = await this.getUser(user.id);
+    
+    if (existingUser) {
+      // Update existing user
+      return db.update(users)
+        .set(user)
+        .where(eq(users.id, user.id))
+        .returning();
+    } else {
+      // Create new user
+      return this.createUser(user);
+    }
+  },
+  
+  // Booking operations
+  async createBooking(booking: any) {
+    return db.insert(bookings).values(booking).returning();
+  },
+  
+  async getAllBookings(page: number = 1, pageSize: number = 10) {
+    const offset = (page - 1) * pageSize;
+    const query = db.query.bookings.findMany({
+      orderBy: (bookings, { desc }) => [desc(bookings.createdAt)],
+      limit: pageSize,
+      offset: offset,
+    });
+    
+    // Get total count for pagination
+    const countQuery = db.select({ count: sql`count(*)` }).from(bookings);
+    const countResult = await countQuery.execute();
+    const totalCount = Number(countResult[0]?.count || 0);
+    
+    const results = await query.execute();
+    
     return {
-      cash: Number(result.cash),
-      upi: Number(result.upi),
+      bookings: results,
+      pagination: {
+        total: totalCount,
+        page,
+        pageSize,
+        totalPages: Math.ceil(totalCount / pageSize)
+      }
     };
-  }
-
-  async getTimeSlotPerformance(): Promise<Array<{ timeSlot: string; bookings: number; revenue: number }>> {
-    const result = await db
-      .select({
-        timeSlot: bookings.timeSlot,
-        bookings: sql<number>`COUNT(*)`,
-        revenue: sql<number>`COALESCE(SUM(${bookings.totalAmount} + ${bookings.snacksAmount}), 0)`,
-      })
-      .from(bookings)
-      .groupBy(bookings.timeSlot)
-      .orderBy(bookings.timeSlot);
-
-    return result.map(row => ({
-      timeSlot: row.timeSlot,
-      bookings: Number(row.bookings),
-      revenue: Number(row.revenue),
-    }));
-  }
-
-  async logActivity(
-    userId: string,
-    action: string,
-    resourceType: string,
-    resourceId?: string,
-    details?: string
-  ): Promise<void> {
-    await db.insert(activityLogs).values({
+  },
+  
+  // Calendar operations
+  async createCalendarEvent(event: any) {
+    return db.insert(calendarEvents).values(event).returning();
+  },
+  
+  // Activity log operations
+  async logActivity(userId: string, action: string, resourceType: string, resourceId: string, details: string) {
+    return db.insert(activityLogs).values({
       userId,
       action,
       resourceType,
-      resourceId: resourceId || "",
-      details: details || "",
-    });
-  }
-
-  async getAllUsers(): Promise<User[]> {
-    return db.select().from(users).orderBy(desc(users.createdAt));
-  }
-
-  async createUser(userData: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-    role?: string;
-  }): Promise<User> {
-    const passwordHash = await hashPassword(userData.password);
-    
-    const [user] = await db.insert(users).values({
-      id: crypto.randomUUID(),
-      email: userData.email,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      passwordHash: passwordHash,
-      role: userData.role || 'employee',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      resourceId,
+      details
     }).returning();
+  },
+  
+  // Analytics operations
+  async getDailyRevenue(days: number = 7) {
+    // Get today's date
+    const today = new Date();
+    const result = [];
     
-    return user;
-  }
-
-  async updateUserRole(id: string, role: string): Promise<User> {
-    const [updated] = await db
-      .update(users)
-      .set({ role, updatedAt: new Date().toISOString() })
-      .where(eq(users.id, id))
-      .returning();
-    return updated;
-  }
-
-  async deleteUser(id: string): Promise<void> {
-    await db.delete(users).where(eq(users.id, id));
-  }
-
-  async getConfig(): Promise<{ theatres: string[]; timeSlots: string[] }> {
-    // For now, return default config. In a real app, this would be stored in database
-    return {
-      theatres: [
-        "Screen 1",
-        "Screen 2", 
-        "Screen 3",
-        "VIP Screen",
-        "Premium Hall"
-      ],
-      timeSlots: [
-        "10:00 AM - 12:00 PM",
-        "12:00 PM - 2:00 PM", 
-        "2:00 PM - 4:00 PM",
-        "4:00 PM - 6:00 PM",
-        "6:00 PM - 8:00 PM",
-        "8:00 PM - 10:00 PM"
-      ]
+    // Generate data for each day
+    for (let i = 0; i < days; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      const dateString = date.toISOString().split('T')[0];
+      
+      // Query bookings for this date
+      const dailyBookings = await db.query.bookings.findMany({
+        where: eq(bookings.bookingDate, dateString)
+      });
+      
+      // Calculate revenue and booking count
+      const revenue = dailyBookings.reduce((sum, booking) => sum + Number(booking.totalAmount), 0);
+      
+      result.push({
+        date: dateString,
+        revenue,
+        bookings: dailyBookings.length
+      });
+    }
+    
+    return result;
+  },
+  
+  async getPaymentMethodBreakdown() {
+    // Get all bookings
+    const allBookings = await db.query.bookings.findMany();
+    
+    // Calculate totals
+    const cash = allBookings.reduce((sum, booking) => sum + Number(booking.cashAmount), 0);
+    const upi = allBookings.reduce((sum, booking) => sum + Number(booking.upiAmount), 0);
+    
+    return { cash, upi };
+  },
+  
+  async getTimeSlotPerformance() {
+    // Get all bookings
+    const allBookings = await db.query.bookings.findMany();
+    
+    // Group by time slot
+    const slotMap = new Map();
+    
+    allBookings.forEach(booking => {
+      const slot = booking.timeSlot;
+      if (!slotMap.has(slot)) {
+        slotMap.set(slot, { timeSlot: slot, bookings: 0, revenue: 0 });
+      }
+      
+      const slotData = slotMap.get(slot);
+      slotData.bookings += 1;
+      slotData.revenue += Number(booking.totalAmount);
+    });
+    
+    return Array.from(slotMap.values());
+  },
+  
+  // Configuration operations
+  async getConfig() {
+    // Default configuration
+    const defaultConfig = {
+      theatres: ['Theatre 1', 'Theatre 2', 'Theatre 3'],
+      timeSlots: ['10:00 AM', '1:00 PM', '4:00 PM', '7:00 PM']
     };
-  }
-
-  async updateConfig(config: { theatres: string[]; timeSlots: string[] }): Promise<{ theatres: string[]; timeSlots: string[] }> {
-    // In a real app, this would save to database
-    // For now, just return the updated config
-    return config;
-  }
-}
-
-export const storage = new DatabaseStorage();
+    
+    try {
+      // Get theatres configuration
+      const theatresConfig = await db.query.configurations.findFirst({
+        where: eq(configurations.key, 'theatres')
+      });
+      
+      // Get time slots configuration
+      const timeSlotsConfig = await db.query.configurations.findFirst({
+        where: eq(configurations.key, 'timeSlots')
+      });
+      
+      return {
+        theatres: theatresConfig ? JSON.parse(theatresConfig.value) : defaultConfig.theatres,
+        timeSlots: timeSlotsConfig ? JSON.parse(timeSlotsConfig.value) : defaultConfig.timeSlots
+      };
+    } catch (error) {
+      console.error('Error fetching configuration:', error);
+      return defaultConfig;
+    }
+  },
+  
+  async updateConfig({ theatres, timeSlots }: { theatres: string[], timeSlots: string[] }, userId: string) {
+    try {
+      // Update theatres configuration
+      await db.insert(configurations)
+        .values({
+          key: 'theatres',
+          value: JSON.stringify(theatres),
+          updatedBy: userId
+        })
+        .onConflictDoUpdate({
+          target: configurations.key,
+          set: {
+            value: JSON.stringify(theatres),
+            updatedBy: userId,
+            updatedAt: sql`(CURRENT_TIMESTAMP)`
+          }
+        });
+      
+      // Update time slots configuration
+      await db.insert(configurations)
+        .values({
+          key: 'timeSlots',
+          value: JSON.stringify(timeSlots),
+          updatedBy: userId
+        })
+        .onConflictDoUpdate({
+          target: configurations.key,
+          set: {
+            value: JSON.stringify(timeSlots),
+            updatedBy: userId,
+            updatedAt: sql`(CURRENT_TIMESTAMP)`
+          }
+        });
+      
+      return { theatres, timeSlots };
+    } catch (error) {
+      console.error('Error updating configuration:', error);
+      throw error;
+    }
+  },
+  
+  // Other necessary database operations
+  // Add more methods as needed for your application
+};

@@ -54,9 +54,6 @@ export function BookingModal({ isOpen, onClose, onSuccess }: BookingModalProps) 
       totalAmount: insertBookingSchema.shape.totalAmount.refine(val => Number(val) > 0, "Total amount must be greater than 0"),
       cashAmount: insertBookingSchema.shape.cashAmount.refine(val => Number(val) >= 0, "Cash amount cannot be negative"),
       upiAmount: insertBookingSchema.shape.upiAmount.refine(val => Number(val) >= 0, "UPI amount cannot be negative"),
-      snacksAmount: insertBookingSchema.shape.snacksAmount.refine(val => Number(val) >= 0, "Snacks amount cannot be negative"),
-      snacksCash: insertBookingSchema.shape.snacksCash.refine(val => Number(val) >= 0, "Snacks cash cannot be negative"),
-      snacksUpi: insertBookingSchema.shape.snacksUpi.refine(val => Number(val) >= 0, "Snacks UPI cannot be negative"),
     })),
     defaultValues: {
       theatreName: "",
@@ -64,10 +61,8 @@ export function BookingModal({ isOpen, onClose, onSuccess }: BookingModalProps) 
       guests: "1",
       totalAmount: "",
       cashAmount: "0",
-      upiAmount: "0", 
-      snacksAmount: "0",
-      snacksCash: "0",
-      snacksUpi: "0",
+      upiAmount: "0",
+      phoneNumber: "",
       bookingDate: new Date().toISOString().split('T')[0],
     },
   });
@@ -116,18 +111,10 @@ export function BookingModal({ isOpen, onClose, onSuccess }: BookingModalProps) 
     const totalAmount = Number(values.totalAmount) || 0;
     const cashAmount = Number(values.cashAmount) || 0;
     const upiAmount = Number(values.upiAmount) || 0;
-    const snacksAmount = Number(values.snacksAmount) || 0;
-    const snacksCash = Number(values.snacksCash) || 0;
-    const snacksUpi = Number(values.snacksUpi) || 0;
 
     // Validate main payment amounts
     if (Math.abs((cashAmount + upiAmount) - totalAmount) > 0.01) {
       errors.push("Cash + UPI must equal total amount");
-    }
-
-    // Validate snacks payment amounts  
-    if (snacksAmount > 0 && Math.abs((snacksCash + snacksUpi) - snacksAmount) > 0.01) {
-      errors.push("Snacks cash + UPI must equal snacks amount");
     }
 
     setValidationErrors(errors);
@@ -156,14 +143,7 @@ export function BookingModal({ isOpen, onClose, onSuccess }: BookingModalProps) 
     validateAmounts();
   };
 
-  // Auto-calculate snacks UPI when snacks total or cash changes
-  const handleSnacksChange = () => {
-    const snacksAmount = Number(form.getValues("snacksAmount")) || 0;
-    const snacksCash = Number(form.getValues("snacksCash")) || 0;
-    const calculatedSnacksUpi = Math.max(0, snacksAmount - snacksCash);
-    form.setValue("snacksUpi", calculatedSnacksUpi.toString());
-    validateAmounts();
-  };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -176,8 +156,7 @@ export function BookingModal({ isOpen, onClose, onSuccess }: BookingModalProps) 
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
+            <FormField
                 control={form.control}
                 name="theatreName"
                 render={({ field }) => (
@@ -226,9 +205,8 @@ export function BookingModal({ isOpen, onClose, onSuccess }: BookingModalProps) 
                   </FormItem>
                 )}
               />
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <FormField
                 control={form.control}
                 name="guests"
@@ -242,6 +220,26 @@ export function BookingModal({ isOpen, onClose, onSuccess }: BookingModalProps) 
                         placeholder="4"
                         className="bg-gray-800 border-gray-600 text-white"
                         data-testid="input-guests"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="phoneNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-300">Phone Number</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="tel"
+                        placeholder="+91 9876543210"
+                        className="bg-gray-800 border-gray-600 text-white"
+                        data-testid="input-phone-number"
                         {...field}
                       />
                     </FormControl>
@@ -343,81 +341,7 @@ export function BookingModal({ isOpen, onClose, onSuccess }: BookingModalProps) 
               />
             </div>
 
-            <div className="border-t border-gray-600 pt-6">
-              <h4 className="text-lg font-semibold text-white mb-4">Snacks Information</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <FormField
-                  control={form.control}
-                  name="snacksAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">Snacks Amount</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="300"
-                          className="bg-gray-800 border-gray-600 text-white"
-                          data-testid="input-snacks-amount"
-                          {...field}
-                          onChange={(e) => {
-                            field.onChange(e);
-                            setTimeout(handleSnacksChange, 0);
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
-                <FormField
-                  control={form.control}
-                  name="snacksCash"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">Snacks Cash</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="200"
-                          className="bg-gray-800 border-gray-600 text-white"
-                          data-testid="input-snacks-cash"
-                          {...field}
-                          onChange={(e) => {
-                            field.onChange(e);
-                            setTimeout(handleSnacksChange, 0);
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="snacksUpi"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">Snacks UPI</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          placeholder="100"
-                          className="bg-gray-800 border-gray-600 text-white"
-                          data-testid="input-snacks-upi"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
 
             <div className="flex items-center justify-between pt-6 border-t border-gray-600">
               <div className="text-sm">

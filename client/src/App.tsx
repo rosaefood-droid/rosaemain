@@ -13,7 +13,6 @@ import LeaveManagement from "@/pages/leave-management";
 import UserManagement from "@/pages/user-management";
 import AdminPanel from "@/pages/admin-panel";
 import Configuration from "@/pages/configuration";
-import CustomerTickets from "@/pages/customer-tickets";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -39,7 +38,6 @@ function Router() {
       <Route path="/expenses" component={Expenses} />
       <Route path="/leave-management" component={LeaveManagement} />
       <Route path="/user-management" component={UserManagement} />
-      <Route path="/customer-tickets" component={CustomerTickets} />
       <Route path="/admin-panel" component={AdminPanel} />
       <Route path="/configuration" component={Configuration} />
       <Route component={NotFound} />

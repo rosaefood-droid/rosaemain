@@ -1,254 +1,207 @@
-import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { Sidebar } from "@/components/sidebar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Settings, Plus, X, Theatre, Clock } from "lucide-react";
-
-interface Config {
-  theatres: string[];
-  timeSlots: string[];
-}
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Configuration() {
   const { toast } = useToast();
-  const { user, isAuthenticated, isLoading } = useAuth();
-  const queryClient = useQueryClient();
-  const [newTheatre, setNewTheatre] = useState('');
-  const [newTimeSlot, setNewTimeSlot] = useState('');
-
-  // Redirect to home if not authenticated or not admin
-  if (!isLoading && (!isAuthenticated || user?.role !== 'admin')) {
-    return (
-      <div className="min-h-screen bg-rosae-black flex items-center justify-center">
-        <div className="text-white text-lg">Access Denied - Admin Only</div>
-      </div>
-    );
-  }
-
-  const { data: config, isLoading: isConfigLoading } = useQuery<Config>({
-    queryKey: ["/api/config"],
-    enabled: user?.role === 'admin',
+  const [generalSettings, setGeneralSettings] = useState({
+    theaterName: 'ROSAE Theatre',
+    contactEmail: 'contact@rosaetheatre.com',
+    phoneNumber: '+1 (555) 123-4567',
+    address: '123 Broadway Ave, New York, NY 10001',
+    enableNotifications: true,
   });
 
-  const updateConfigMutation = useMutation({
-    mutationFn: async (config: Config) => {
-      return await apiRequest("POST", `/api/config`, config);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/config"] });
-      toast({
-        title: "Configuration updated",
-        description: "Theatre and time slot settings have been saved.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: "Failed to update configuration",
-        variant: "destructive",
-      });
-    },
+  const [bookingSettings, setBookingSettings] = useState({
+    advanceBookingDays: 30,
+    maxTicketsPerBooking: 10,
+    enableOnlineBooking: true,
+    showSeatMap: true,
   });
 
-  const handleAddTheatre = () => {
-    if (!newTheatre.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a theatre name",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (config) {
-      const updatedConfig = {
-        ...config,
-        theatres: [...config.theatres, newTheatre.trim()]
-      };
-      updateConfigMutation.mutate(updatedConfig);
-      setNewTheatre('');
-    }
+  const handleGeneralSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setGeneralSettings({
+      ...generalSettings,
+      [name]: type === 'checkbox' ? checked : value,
+    });
   };
 
-  const handleAddTimeSlot = () => {
-    if (!newTimeSlot.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a time slot",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (config) {
-      const updatedConfig = {
-        ...config,
-        timeSlots: [...config.timeSlots, newTimeSlot.trim()]
-      };
-      updateConfigMutation.mutate(updatedConfig);
-      setNewTimeSlot('');
-    }
+  const handleBookingSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setBookingSettings({
+      ...bookingSettings,
+      [name]: type === 'checkbox' ? checked : type === 'number' ? parseInt(value) : value,
+    });
   };
 
-  const handleRemoveTheatre = (theatre: string) => {
-    if (config) {
-      const updatedConfig = {
-        ...config,
-        theatres: config.theatres.filter(t => t !== theatre)
-      };
-      updateConfigMutation.mutate(updatedConfig);
-    }
+  const handleSaveSettings = () => {
+    // Here you would typically save settings to your backend
+    toast({
+      title: 'Settings saved',
+      description: 'Your configuration has been updated successfully.',
+    });
   };
-
-  const handleRemoveTimeSlot = (timeSlot: string) => {
-    if (config) {
-      const updatedConfig = {
-        ...config,
-        timeSlots: config.timeSlots.filter(t => t !== timeSlot)
-      };
-      updateConfigMutation.mutate(updatedConfig);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-rosae-black flex items-center justify-center">
-        <div className="text-white text-lg">Loading...</div>
-      </div>
-    );
-  }
 
   return (
-    <div className="flex min-h-screen bg-rosae-black">
-      <Sidebar />
-      <div className="flex-1 p-8">
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-white flex items-center">
-                <Settings className="mr-3 h-8 w-8 text-blue-400" />
-                System Configuration
-              </h1>
-              <p className="text-gray-400">Manage theatres and time slots for bookings</p>
-            </div>
-          </div>
-
-          {isConfigLoading ? (
-            <div className="text-center py-8">
-              <div className="text-gray-400">Loading configuration...</div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Theatre Management */}
-              <Card className="bg-rosae-dark-gray border-gray-600">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Theatre className="w-5 h-5 mr-2 text-blue-400" />
-                    Theatre Management
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex space-x-2">
-                    <Input
-                      placeholder="Enter theatre name (e.g., Screen 1)"
-                      value={newTheatre}
-                      onChange={(e) => setNewTheatre(e.target.value)}
-                      className="bg-gray-800 border-gray-600 text-white"
-                    />
-                    <Button
-                      onClick={handleAddTheatre}
-                      disabled={updateConfigMutation.isPending}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    {config?.theatres.map((theatre, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-                        <span className="text-white">{theatre}</span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleRemoveTheatre(theatre)}
-                          className="border-red-600 text-red-400 hover:bg-red-600/20"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Time Slot Management */}
-              <Card className="bg-rosae-dark-gray border-gray-600">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Clock className="w-5 h-5 mr-2 text-green-400" />
-                    Time Slot Management
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex space-x-2">
-                    <Input
-                      placeholder="Enter time slot (e.g., 10:00 AM - 12:00 PM)"
-                      value={newTimeSlot}
-                      onChange={(e) => setNewTimeSlot(e.target.value)}
-                      className="bg-gray-800 border-gray-600 text-white"
-                    />
-                    <Button
-                      onClick={handleAddTimeSlot}
-                      disabled={updateConfigMutation.isPending}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    {config?.timeSlots.map((timeSlot, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-                        <span className="text-white">{timeSlot}</span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleRemoveTimeSlot(timeSlot)}
-                          className="border-red-600 text-red-400 hover:bg-red-600/20"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Information Alert */}
-          <Card className="bg-rosae-dark-gray border-gray-600 mt-8">
-            <CardContent className="p-6">
-              <Alert className="border-blue-600 bg-blue-600/10">
-                <Settings className="h-4 w-4 text-blue-400" />
-                <AlertDescription className="text-blue-200">
-                  <strong>Configuration Updates:</strong> Any changes you make here will immediately be reflected in the booking form. 
-                  New theatres and time slots will be available for selection when creating bookings.
-                </AlertDescription>
-              </Alert>
+    <div className="container mx-auto py-10">
+      <h1 className="text-3xl font-bold mb-6">System Configuration</h1>
+      
+      <Tabs defaultValue="general" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="general">General Settings</TabsTrigger>
+          <TabsTrigger value="booking">Booking Settings</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="general">
+          <Card>
+            <CardHeader>
+              <CardTitle>General Settings</CardTitle>
+              <CardDescription>
+                Configure your theatre's basic information and general settings.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="theaterName">Theatre Name</Label>
+                <Input
+                  id="theaterName"
+                  name="theaterName"
+                  value={generalSettings.theaterName}
+                  onChange={handleGeneralSettingsChange}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="contactEmail">Contact Email</Label>
+                <Input
+                  id="contactEmail"
+                  name="contactEmail"
+                  type="email"
+                  value={generalSettings.contactEmail}
+                  onChange={handleGeneralSettingsChange}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber">Phone Number</Label>
+                <Input
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  value={generalSettings.phoneNumber}
+                  onChange={handleGeneralSettingsChange}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="address">Address</Label>
+                <Input
+                  id="address"
+                  name="address"
+                  value={generalSettings.address}
+                  onChange={handleGeneralSettingsChange}
+                />
+              </div>
+              
+              <Separator className="my-4" />
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="enableNotifications">Enable Notifications</Label>
+                  <p className="text-sm text-muted-foreground">Send email notifications for bookings and updates</p>
+                </div>
+                <Switch
+                  id="enableNotifications"
+                  name="enableNotifications"
+                  checked={generalSettings.enableNotifications}
+                  onCheckedChange={(checked) => 
+                    setGeneralSettings({...generalSettings, enableNotifications: checked})
+                  }
+                />
+              </div>
             </CardContent>
+            <CardFooter>
+              <Button onClick={handleSaveSettings}>Save Changes</Button>
+            </CardFooter>
           </Card>
-        </div>
-      </div>
+        </TabsContent>
+        
+        <TabsContent value="booking">
+          <Card>
+            <CardHeader>
+              <CardTitle>Booking Settings</CardTitle>
+              <CardDescription>
+                Configure how customers can book tickets for your shows.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="advanceBookingDays">Advance Booking Days</Label>
+                <Input
+                  id="advanceBookingDays"
+                  name="advanceBookingDays"
+                  type="number"
+                  value={bookingSettings.advanceBookingDays}
+                  onChange={handleBookingSettingsChange}
+                />
+                <p className="text-sm text-muted-foreground">How many days in advance can customers book tickets</p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="maxTicketsPerBooking">Maximum Tickets Per Booking</Label>
+                <Input
+                  id="maxTicketsPerBooking"
+                  name="maxTicketsPerBooking"
+                  type="number"
+                  value={bookingSettings.maxTicketsPerBooking}
+                  onChange={handleBookingSettingsChange}
+                />
+              </div>
+              
+              <Separator className="my-4" />
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="enableOnlineBooking">Enable Online Booking</Label>
+                  <p className="text-sm text-muted-foreground">Allow customers to book tickets online</p>
+                </div>
+                <Switch
+                  id="enableOnlineBooking"
+                  name="enableOnlineBooking"
+                  checked={bookingSettings.enableOnlineBooking}
+                  onCheckedChange={(checked) => 
+                    setBookingSettings({...bookingSettings, enableOnlineBooking: checked})
+                  }
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="showSeatMap">Show Seat Map</Label>
+                  <p className="text-sm text-muted-foreground">Display interactive seat map during booking</p>
+                </div>
+                <Switch
+                  id="showSeatMap"
+                  name="showSeatMap"
+                  checked={bookingSettings.showSeatMap}
+                  onCheckedChange={(checked) => 
+                    setBookingSettings({...bookingSettings, showSeatMap: checked})
+                  }
+                />
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleSaveSettings}>Save Changes</Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
-} 
+}

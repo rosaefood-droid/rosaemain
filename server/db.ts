@@ -41,6 +41,7 @@ export function initializeDatabase() {
       booking_date TEXT NOT NULL,
       time_slot TEXT NOT NULL,
       guests INTEGER NOT NULL,
+      phone_number TEXT,
       total_amount REAL NOT NULL,
       cash_amount REAL NOT NULL,
       upi_amount REAL NOT NULL,

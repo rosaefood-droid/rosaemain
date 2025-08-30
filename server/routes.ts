@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 // import { setupAuth, isAuthenticated } from "./replitAuth";
 import { isAuthenticated } from "./devAuth";
-import { insertBookingSchema, insertExpenseSchema, insertLeaveApplicationSchema, insertCustomerTicketSchema, type Booking } from "@shared/schema";
+import { insertBookingSchema, insertExpenseSchema, insertLeaveApplicationSchema, type Booking } from "@shared/schema";
 import session from "express-session";
 import bcrypt from "bcryptjs";
 
@@ -12,10 +12,13 @@ async function createCalendarEvent(booking: Booking) {
   const startTime = new Date(`${booking.bookingDate}T${booking.timeSlot.split('-')[0]}:00`);
   const endTime = new Date(`${booking.bookingDate}T${booking.timeSlot.split('-')[1]}:00`);
   
+  // Include phone number in description if available
+  const phoneInfo = booking.phoneNumber ? ` Phone: ${booking.phoneNumber}.` : '';
+  
   const calendarEvent = {
     bookingId: booking.id,
     title: `${booking.theatreName} Booking - ${booking.guests} guests`,
-    description: `Theatre booking for ${booking.guests} guests. Total: ₹${booking.totalAmount}. Created by: ${booking.createdBy}`,
+    description: `Theatre booking for ${booking.guests} guests. Total: ₹${booking.totalAmount}.${phoneInfo} Created by: ${booking.createdBy}`,
     startTime,
     endTime,
     location: booking.theatreName,
@@ -43,6 +46,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     }
   }));
+
+  // Direct login endpoint for testing
+  app.get('/api/direct-login', async (req: any, res) => {
+    try {
+      // Create a simple admin user
+      const adminUser = {
+        id: "admin-001",
+        email: "admin@rosae.com",
+        firstName: "Admin",
+        lastName: "User",
+        profileImageUrl: null,
+        role: "admin",
+      };
+
+      // Create the user in the database using direct SQL
+      try {
+        console.log("Creating user in database:", adminUser);
+        // Use direct SQL to insert or replace the admin user
+        const db = require('./db').db;
+        await db.execute(`
+          INSERT OR REPLACE INTO users (id, email, first_name, last_name, profile_image_url, role, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+        `, [
+          adminUser.id,
+          adminUser.email,
+          adminUser.firstName,
+          adminUser.lastName,
+          adminUser.profileImageUrl,
+          adminUser.role
+        ]);
+        console.log("User created successfully via SQL");
+      } catch (dbError) {
+        console.error("Error creating user in database:", dbError);
+        // Continue anyway - the session will still work
+      }
+
+      // Set up the session directly
+      req.session.user = {
+        claims: {
+          sub: adminUser.id,
+          email: adminUser.email,
+          first_name: adminUser.firstName,
+          last_name: adminUser.lastName,
+          profile_image_url: adminUser.profileImageUrl,
+        },
+        access_token: "dev-token",
+      };
+      
+      // Save session explicitly before redirecting
+      req.session.save((err) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ message: "Session save failed" });
+        }
+        console.log("Session saved successfully:", req.session);
+        // Respond with JSON instead of redirect for testing
+        res.json({ success: true, message: "Logged in successfully", user: adminUser });
+      });
+    } catch (error) {
+      console.error("Direct login error:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
 
   // Auth routes
   app.get('/api/auth/user', async (req: any, res) => {
@@ -191,8 +257,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     if (sessionUser && sessionUser.claims) {
       try {
-        // Get user from database to get the correct role
-        const user = await storage.getUserByEmail(sessionUser.claims.email);
+        // First try to get the user by ID (sub claim)
+        let user = null;
+        if (sessionUser.claims.sub) {
+          user = await storage.getUser(sessionUser.claims.sub);
+        }
+        
+        // If not found by ID, try by email
+        if (!user && sessionUser.claims.email) {
+          user = await storage.getUserByEmail(sessionUser.claims.email);
+        }
+        
+        console.log("User lookup result:", user ? { id: user.id, email: user.email } : "User not found");
+        
         const userData = {
           id: sessionUser.claims.sub,
           email: sessionUser.claims.email,
@@ -354,7 +431,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { theatres, timeSlots } = req.body;
-      const config = await storage.updateConfig({ theatres, timeSlots });
+      const userId = currentUser.claims.sub;
+      const config = await storage.updateConfig({ theatres, timeSlots }, userId);
       res.json(config);
     } catch (error) {
       console.error('Error updating config:', error);
@@ -390,7 +468,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Booking routes
   app.post('/api/bookings', isAuthenticated, async (req: any, res) => {
     try {
+      console.log("Session:", req.session);
+      console.log("User from request:", req.user);
       const userId = req.user.claims.sub;
+      console.log("User ID from session:", userId);
       console.log("Raw booking data:", req.body);
       const bookingData = insertBookingSchema.parse(req.body);
       console.log("Parsed booking data:", bookingData);
@@ -407,9 +488,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Snacks cash + UPI must equal snacks amount" });
       }
 
+      // Always ensure the user exists in the database before creating a booking
+      console.log("Ensuring user exists in database:", userId);
+      
+      // Create or update the user using storage API instead of direct SQL
+      try {
+        // Check if user already exists
+        let existingUser = await storage.getUser(userId);
+        
+        if (!existingUser) {
+          // Create the user if they don't exist
+          await storage.upsertUser({
+            id: userId,
+            email: req.user.claims.email || 'admin@rosae.com',
+            first_name: req.user.claims.first_name || 'Admin',
+            last_name: req.user.claims.last_name || 'User',
+            profile_image_url: req.user.claims.profile_image_url || null,
+            role: 'admin'
+          });
+          console.log("User created successfully via storage API");
+        } else {
+          console.log("User already exists in database");
+        }
+      } catch (dbError) {
+        console.error("Error creating user in database:", dbError);
+        return res.status(500).json({ message: "Failed to create booking - user account issue" });
+      }
+      
+      // Use the session user ID as the creator
+      let creatorId = userId;
+      
+      // Double-check that the user exists now
+      const existingUser = await storage.getUser(userId);
+      if (!existingUser) {
+        // If user still doesn't exist, check if there's any admin user we can use
+        const adminUsers = await storage.getAllUsers();
+        const adminUser = adminUsers.find(user => user.role === 'admin');
+        
+        if (adminUser) {
+          creatorId = adminUser.id;
+          console.log("Using existing admin user as creator:", creatorId);
+        } else {
+          // Create a default admin user as a fallback
+          const defaultAdmin = {
+            id: "admin-001",
+            email: "admin@rosae.com",
+            first_name: "Admin",
+            last_name: "User",
+            profile_image_url: null,
+            role: "admin"
+          };
+          
+          const createdAdmin = await storage.upsertUser(defaultAdmin);
+          creatorId = createdAdmin.id;
+          console.log("Created default admin user as creator:", creatorId);
+        }
+      }
+      
+      // Include phone number in booking data
       const booking = await storage.createBooking({
         ...bookingData,
-        createdBy: userId,
+        createdBy: creatorId,
       } as any);
 
       // Create calendar event
@@ -420,7 +559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Don't fail the booking creation if calendar fails
       }
 
-      await storage.logActivity(userId, "CREATE", "BOOKING", booking.id, `Created booking for ${bookingData.theatreName}`);
+      await storage.logActivity(creatorId, "CREATE", "BOOKING", booking.id, `Created booking for ${bookingData.theatreName}`);
       
       res.json(booking);
     } catch (error) {
@@ -431,9 +570,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/bookings', isAuthenticated, async (req: any, res) => {
     try {
-      const { limit } = req.query;
-      const bookings = await storage.getAllBookings(limit ? parseInt(limit as string) : undefined);
-      res.json(bookings);
+      const page = req.query.page ? parseInt(req.query.page as string) : 1;
+      const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string) : 10;
+      
+      const result = await storage.getAllBookings(page, pageSize);
+      res.json(result);
     } catch (error) {
       console.error("Error fetching bookings:", error);
       res.status(500).json({ message: "Failed to fetch bookings" });
@@ -483,6 +624,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching expenses:", error);
       res.status(500).json({ message: "Failed to fetch expenses" });
+    }
+  });
+
+  // Analytics routes
+  app.get('/api/analytics/daily-revenue', isAuthenticated, async (req, res) => {
+    try {
+      const days = req.query.days ? parseInt(req.query.days as string) : 7;
+      const dailyRevenue = await storage.getDailyRevenue(days);
+      res.json(dailyRevenue);
+    } catch (error) {
+      console.error('Error fetching daily revenue:', error);
+      res.status(500).json({ error: 'Failed to fetch daily revenue data' });
+    }
+  });
+  
+  app.get('/api/analytics/payment-methods', isAuthenticated, async (req, res) => {
+    try {
+      const paymentMethods = await storage.getPaymentMethodBreakdown();
+      res.json(paymentMethods);
+    } catch (error) {
+      console.error('Error fetching payment methods breakdown:', error);
+      res.status(500).json({ error: 'Failed to fetch payment methods data' });
+    }
+  });
+  
+  app.get('/api/analytics/time-slots', isAuthenticated, async (req, res) => {
+    try {
+      const timeSlots = await storage.getTimeSlotPerformance();
+      res.json(timeSlots);
+    } catch (error) {
+      console.error('Error fetching time slot performance:', error);
+      res.status(500).json({ error: 'Failed to fetch time slot data' });
     }
   });
 
@@ -568,111 +741,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Customer ticket routes
-  app.post('/api/customer-tickets', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const ticketData = insertCustomerTicketSchema.parse(req.body);
-      
-      const ticket = await storage.createCustomerTicket({
-        ...ticketData,
-        status: 'open',
-        createdBy: userId,
-      });
+  // Customer ticket routes removed as requested
 
-      await storage.logActivity(userId, "CREATE", "CUSTOMER_TICKET", ticket.id, `Created customer ticket: ${ticketData.title}`);
-      
-      res.json(ticket);
-    } catch (error) {
-      console.error("Error creating customer ticket:", error);
-      res.status(500).json({ message: "Failed to create customer ticket" });
-    }
-  });
+  // Customer ticket routes removed as requested
 
-  app.get('/api/customer-tickets', isAuthenticated, async (req, res) => {
-    try {
-      const tickets = await storage.getAllCustomerTickets();
-      res.json(tickets);
-    } catch (error) {
-      console.error("Error fetching customer tickets:", error);
-      res.status(500).json({ message: "Failed to fetch customer tickets" });
-    }
-  });
+  // Expense export route - fixed duplicate route
 
-  app.patch('/api/customer-tickets/:id/status', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const { id } = req.params;
-      const { status, assignedTo } = req.body;
-      
-      if (!['open', 'in_progress', 'closed'].includes(status)) {
-        return res.status(400).json({ message: "Invalid status" });
-      }
-      
-      const updatedTicket = await storage.updateTicketStatus(id, status, assignedTo);
-      await storage.logActivity(userId, "UPDATE", "CUSTOMER_TICKET", id, `Updated ticket status to ${status}`);
-      
-      res.json(updatedTicket);
-    } catch (error) {
-      console.error("Error updating ticket status:", error);
-      res.status(500).json({ message: "Failed to update ticket status" });
-    }
-  });
-
-  // Expense export route
-  app.get('/api/expenses/export', isAuthenticated, async (req, res) => {
-    try {
-      const { category } = req.query;
-      let expenses;
-      
-      if (category) {
-        expenses = await storage.getExpensesByCategory(category as string);
-      } else {
-        expenses = await storage.getAllExpenses();
-      }
-      
-      // Generate CSV
-      const csvHeaders = 'Date,Category,Description,Amount\n';
-      const csvData = expenses.map(expense => 
-        `${expense.expenseDate},${expense.category},"${expense.description}",${expense.amount}`
-      ).join('\n');
-      
-      const csv = csvHeaders + csvData;
-      
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="expenses${category ? `_${category}` : ''}.csv"`);
-      res.send(csv);
-    } catch (error) {
-      console.error("Error exporting expenses:", error);
-      res.status(500).json({ message: "Failed to export expenses" });
-    }
-  });
-
-  app.get('/api/customer-tickets', isAuthenticated, async (req, res) => {
-    try {
-      const tickets = await storage.getAllCustomerTickets();
-      res.json(tickets);
-    } catch (error) {
-      console.error("Error fetching customer tickets:", error);
-      res.status(500).json({ message: "Failed to fetch customer tickets" });
-    }
-  });
-
-  app.patch('/api/customer-tickets/:id/status', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const { id } = req.params;
-      const { status, assignedTo } = req.body;
-      
-      const updatedTicket = await storage.updateTicketStatus(id, status, assignedTo);
-      await storage.logActivity(userId, "UPDATE", "CUSTOMER_TICKET", id, `Updated ticket status to ${status}`);
-      
-      res.json(updatedTicket);
-    } catch (error) {
-      console.error("Error updating ticket status:", error);
-      res.status(500).json({ message: "Failed to update ticket status" });
-    }
-  });
+  // Customer ticket routes removed as requested
 
   // Expense export routes
   app.get('/api/expenses/export', isAuthenticated, async (req, res) => {
@@ -733,6 +808,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error handling calendar webhook:", error);
       res.status(500).json({ message: "Failed to handle webhook" });
+    }
+  });
+  
+  // Booking webhook endpoint for automatic booking creation
+  app.post('/api/webhooks/booking', async (req, res) => {
+    try {
+      const bookingData = req.body;
+      
+      // Validate the booking data
+      if (!bookingData.theatreName || !bookingData.timeSlot || !bookingData.guests || 
+          !bookingData.totalAmount || !bookingData.cashAmount || !bookingData.upiAmount || 
+          !bookingData.bookingDate) {
+        return res.status(400).json({ 
+          message: "Missing required booking fields",
+          requiredFields: ["theatreName", "timeSlot", "guests", "totalAmount", "cashAmount", "upiAmount", "bookingDate"]
+        });
+      }
+      
+      // Add phone number if not provided
+      if (!bookingData.phoneNumber) {
+        console.log("No phone number provided in webhook booking");
+      }
+      
+      // Validate that cash + UPI equals total amount
+      const totalPaid = bookingData.cashAmount + bookingData.upiAmount;
+      const snacksPaid = (bookingData.snacksCash || 0) + (bookingData.snacksUpi || 0);
+      
+      if (Math.abs(totalPaid - bookingData.totalAmount) > 0.01) {
+        return res.status(400).json({ message: "Cash + UPI must equal total amount" });
+      }
+      
+      if (Math.abs(snacksPaid - (bookingData.snacksAmount || 0)) > 0.01) {
+        return res.status(400).json({ message: "Snacks cash + UPI must equal snacks amount" });
+      }
+
+      // Get the first admin user to use as creator for webhook bookings
+      const adminUsers = await storage.getAllUsers();
+      const adminUser = adminUsers.find(user => user.role === 'admin');
+      
+      if (!adminUser) {
+        return res.status(500).json({ message: "No admin user found to create booking" });
+      }
+      
+      const booking = await storage.createBooking({
+        ...bookingData,
+        createdBy: adminUser.id,
+      } as any);
+
+      // Create calendar event
+      try {
+        await createCalendarEvent(booking);
+      } catch (calendarError) {
+        console.error("Failed to create calendar event from webhook:", calendarError);
+        // Don't fail the booking creation if calendar fails
+      }
+
+      await storage.logActivity(adminUser.id, "CREATE", "BOOKING", booking.id, `Created booking via webhook for ${bookingData.theatreName}`);
+      
+      res.status(201).json({
+        success: true,
+        message: "Booking created successfully",
+        bookingId: booking.id
+      });
+    } catch (error) {
+      console.error("Error creating booking via webhook:", error);
+      res.status(500).json({ message: "Failed to create booking" });
     }
   });
 

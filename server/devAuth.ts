@@ -26,7 +26,7 @@ export async function setupDevAuth(app: Express) {
     try {
       // Create a simple admin user
       const adminUser = {
-        id: "34316921",
+        id: "admin-001", // Match the ID used in the session
         email: "rosaeleisure@gmail.com",
         first_name: "ROSAE",
         last_name: "Admin",
