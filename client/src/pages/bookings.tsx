@@ -52,9 +52,16 @@ export default function Bookings() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data, isLoading: isBookingsLoading, refetch, error: bookingsError } = useQuery({
-    queryKey: ["/api/bookings", currentPage, pageSize],
+    queryKey: ["/api/bookings", currentPage, pageSize, dateFilter, phoneFilter, bookingDateFilter],
     queryFn: async () => {
-      const response = await fetch(`/api/bookings?page=${currentPage}&pageSize=${pageSize}`);
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        pageSize: pageSize.toString(),
+        ...(dateFilter && { dateFilter }),
+        ...(phoneFilter && { phoneFilter }),
+        ...(bookingDateFilter && { bookingDateFilter })
+      });
+      const response = await fetch(`/api/bookings?${params}`);
       if (!response.ok) {
         throw new Error('Failed to fetch bookings');
       }
@@ -112,41 +119,10 @@ export default function Bookings() {
     },
   });
   
-  // Apply filters whenever bookings data or filter values change
+  // Reset to first page when filters change
   useEffect(() => {
-    // Check if data exists and has the bookings property
-    if (!data || !data.bookings || !Array.isArray(data.bookings)) {
-      setFilteredBookings([]);
-      return;
-    }
-    
-    let filtered = [...data.bookings];
-    
-    // Apply date filter (created date)
-    if (dateFilter) {
-      const dateToFilter = new Date(dateFilter).toDateString();
-      filtered = filtered.filter(booking => {
-        const createdDate = new Date(booking.createdAt).toDateString();
-        return createdDate === dateToFilter;
-      });
-    }
-    
-    // Apply phone number filter
-    if (phoneFilter) {
-      filtered = filtered.filter(booking => 
-        booking.phoneNumber && booking.phoneNumber.includes(phoneFilter)
-      );
-    }
-    
-    // Apply booking date filter
-    if (bookingDateFilter) {
-      filtered = filtered.filter(booking => 
-        booking.bookingDate === bookingDateFilter
-      );
-    }
-    
-    setFilteredBookings(filtered);
-  }, [data, dateFilter, phoneFilter, bookingDateFilter]);
+    setCurrentPage(1);
+  }, [dateFilter, phoneFilter, bookingDateFilter]);
 
   // Handle booking errors
   useEffect(() => {
@@ -219,6 +195,22 @@ export default function Bookings() {
         
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {(dateFilter || phoneFilter || bookingDateFilter) && (
+            <div className="col-span-full flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDateFilter("");
+                  setPhoneFilter("");
+                  setBookingDateFilter("");
+                }}
+                className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                data-testid="button-clear-all-filters"
+              >
+                Clear All Filters
+              </Button>
+            </div>
+          )}
           <div className="relative">
             <Input
               type="date"

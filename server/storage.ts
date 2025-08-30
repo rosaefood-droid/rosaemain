@@ -1,4 +1,4 @@
-import { sql, eq, desc } from "drizzle-orm";
+import { sql, eq, desc, and, like } from "drizzle-orm";
 import { db } from "./db";
 import { 
   users, bookings, expenses, leaveApplications, activityLogs, 
@@ -104,20 +104,48 @@ export const storage = {
     });
   },
   
-  async getAllBookings(page: number = 1, pageSize: number = 10) {
+  async getAllBookings(page: number = 1, pageSize: number = 10, filters?: {
+    dateFilter?: string;
+    phoneFilter?: string;
+    bookingDateFilter?: string;
+  }) {
     const offset = (page - 1) * pageSize;
-    const query = db.query.bookings.findMany({
-      orderBy: (bookings, { desc }) => [desc(bookings.createdAt)],
-      limit: pageSize,
-      offset: offset,
-    });
     
-    // Get total count for pagination
-    const countQuery = db.select({ count: sql`count(*)` }).from(bookings);
+    // Build where conditions
+    const whereConditions: any[] = [];
+    
+    if (filters?.dateFilter) {
+      const filterDate = filters.dateFilter;
+      whereConditions.push(sql`DATE(${bookings.createdAt}) = ${filterDate}`);
+    }
+    
+    if (filters?.phoneFilter) {
+      whereConditions.push(like(bookings.phoneNumber, `%${filters.phoneFilter}%`));
+    }
+    
+    if (filters?.bookingDateFilter) {
+      whereConditions.push(eq(bookings.bookingDate, filters.bookingDateFilter));
+    }
+    
+    // Combine conditions with AND
+    const whereClause = whereConditions.length > 0 
+      ? and(...whereConditions)
+      : undefined;
+    
+    // Get filtered results
+    const results = await db.select()
+      .from(bookings)
+      .where(whereClause)
+      .orderBy(desc(bookings.createdAt))
+      .limit(pageSize)
+      .offset(offset);
+    
+    // Get total count for pagination with filters
+    const countQuery = db.select({ count: sql`count(*)` })
+      .from(bookings)
+      .where(whereClause);
     const countResult = await countQuery.execute();
     const totalCount = Number(countResult[0]?.count || 0);
-    
-    const results = await query.execute();
     
     return {
       bookings: results,

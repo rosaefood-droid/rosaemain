@@ -426,7 +426,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/config', isAuthenticated, async (req: any, res) => {
     try {
       const currentUser = req.user;
-      if (currentUser.claims.email !== 'admin@rosae.com') {
+      
+      // Check if user is admin by role or email
+      const userRole = await storage.getUser(currentUser.claims.sub);
+      if (!userRole || (userRole.role !== 'admin' && currentUser.claims.email !== 'admin@rosae.com')) {
         return res.status(403).json({ message: 'Only admins can update configuration' });
       }
 
@@ -573,7 +576,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const page = req.query.page ? parseInt(req.query.page as string) : 1;
       const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string) : 10;
       
-      const result = await storage.getAllBookings(page, pageSize);
+      // Extract filter parameters
+      const filters = {
+        dateFilter: req.query.dateFilter as string | undefined,
+        phoneFilter: req.query.phoneFilter as string | undefined,
+        bookingDateFilter: req.query.bookingDateFilter as string | undefined,
+      };
+      
+      const result = await storage.getAllBookings(page, pageSize, filters);
       res.json(result);
     } catch (error) {
       console.error("Error fetching bookings:", error);

@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
 import { useAuth, type User } from "@/hooks/useAuth";
+import { useSidebar } from "@/contexts/SidebarContext";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -13,7 +14,8 @@ import {
   Users,
   LogOut,
   Shield,
-  Settings
+  Settings,
+  X
 } from "lucide-react";
 
 const navigationItems = [
@@ -82,6 +84,7 @@ export function Sidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isOpen, close } = useSidebar();
 
   const handleLogout = async () => {
     try {
@@ -112,19 +115,45 @@ export function Sidebar() {
   };
 
   return (
-    <div className="w-64 bg-rosae-dark-gray shadow-xl flex flex-col">
-      {/* Logo Section */}
-      <div className="p-6 border-b border-gray-600">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-rosae-red rounded-lg flex items-center justify-center">
-            <Theater className="text-white text-xl" data-testid="icon-logo" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-white" data-testid="text-brand-name">ROSAE</h1>
-            <p className="text-gray-400 text-sm">Theatre Management</p>
+    <>
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={close}
+          data-testid="sidebar-overlay"
+        />
+      )}
+      
+      <div
+        className={cn(
+          "fixed top-0 left-0 h-full w-64 bg-rosae-dark-gray shadow-xl flex flex-col transform transition-transform duration-300 ease-in-out z-50",
+          "lg:relative lg:translate-x-0",
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+        data-testid="sidebar-panel"
+      >
+        {/* Logo Section */}
+        <div className="p-6 border-b border-gray-600">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-rosae-red rounded-lg flex items-center justify-center">
+                <Theater className="text-white text-xl" data-testid="icon-logo" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white" data-testid="text-brand-name">ROSAE</h1>
+                <p className="text-gray-400 text-sm">Theatre Management</p>
+              </div>
+            </div>
+            <button
+              onClick={close}
+              className="lg:hidden text-gray-400 hover:text-white transition-colors"
+              data-testid="button-close-sidebar"
+            >
+              <X className="w-6 h-6" />
+            </button>
           </div>
         </div>
-      </div>
 
       {/* Navigation */}
       <nav className="mt-6 flex-1">
@@ -230,7 +259,8 @@ export function Sidebar() {
             <LogOut className="w-5 h-5" />
           </button>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
