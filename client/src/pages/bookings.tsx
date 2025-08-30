@@ -6,13 +6,20 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import Layout from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { BookingModal } from "@/components/booking-modal";
-import { Plus, Calendar, Users, IndianRupee } from "lucide-react";
+import { Plus, Calendar, Users, IndianRupee, Search, X } from "lucide-react";
 
 export default function Bookings() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  
+  // Filter states
+  const [dateFilter, setDateFilter] = useState("");
+  const [phoneFilter, setPhoneFilter] = useState("");
+  const [bookingDateFilter, setBookingDateFilter] = useState("");
+  const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -29,9 +36,52 @@ export default function Bookings() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: bookings, isLoading: isBookingsLoading, refetch, error: bookingsError } = useQuery<any[]>({
+  const { data, isLoading: isBookingsLoading, refetch, error: bookingsError } = useQuery({
     queryKey: ["/api/bookings"],
+    queryFn: async () => {
+      const response = await fetch('/api/bookings');
+      if (!response.ok) {
+        throw new Error('Failed to fetch bookings');
+      }
+      return response.json();
+    },
   });
+  
+  // Apply filters whenever bookings data or filter values change
+  useEffect(() => {
+    // Check if data exists and has the bookings property
+    if (!data || !data.bookings || !Array.isArray(data.bookings)) {
+      setFilteredBookings([]);
+      return;
+    }
+    
+    let filtered = [...data.bookings];
+    
+    // Apply date filter (created date)
+    if (dateFilter) {
+      const dateToFilter = new Date(dateFilter).toDateString();
+      filtered = filtered.filter(booking => {
+        const createdDate = new Date(booking.createdAt).toDateString();
+        return createdDate === dateToFilter;
+      });
+    }
+    
+    // Apply phone number filter
+    if (phoneFilter) {
+      filtered = filtered.filter(booking => 
+        booking.phoneNumber && booking.phoneNumber.includes(phoneFilter)
+      );
+    }
+    
+    // Apply booking date filter
+    if (bookingDateFilter) {
+      filtered = filtered.filter(booking => 
+        booking.bookingDate === bookingDateFilter
+      );
+    }
+    
+    setFilteredBookings(filtered);
+  }, [data, dateFilter, phoneFilter, bookingDateFilter]);
 
   // Handle booking errors
   useEffect(() => {
@@ -66,7 +116,7 @@ export default function Bookings() {
   return (
     <Layout>
       <div className="p-6">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-2xl font-bold text-white" data-testid="text-page-title">All Bookings</h2>
             <p className="text-gray-400">Manage and view all theatre bookings</p>
@@ -80,6 +130,72 @@ export default function Bookings() {
             New Booking
           </Button>
         </div>
+        
+        {/* Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="relative">
+            <Input
+              type="date"
+              placeholder="Filter by date"
+              className="bg-gray-800 border-gray-600 text-white pr-10"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              data-testid="input-date-filter"
+            />
+            {dateFilter && (
+              <button 
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                onClick={() => setDateFilter("")}
+                data-testid="button-clear-date-filter"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+            <span className="text-xs text-gray-400 mt-1 block">Filter by created date</span>
+          </div>
+          
+          <div className="relative">
+            <Input
+              type="text"
+              placeholder="Filter by phone number"
+              className="bg-gray-800 border-gray-600 text-white pr-10"
+              value={phoneFilter}
+              onChange={(e) => setPhoneFilter(e.target.value)}
+              data-testid="input-phone-filter"
+            />
+            {phoneFilter && (
+              <button 
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                onClick={() => setPhoneFilter("")}
+                data-testid="button-clear-phone-filter"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+            <span className="text-xs text-gray-400 mt-1 block">Filter by phone number</span>
+          </div>
+          
+          <div className="relative">
+            <Input
+              type="date"
+              placeholder="Filter by booking date"
+              className="bg-gray-800 border-gray-600 text-white pr-10"
+              value={bookingDateFilter}
+              onChange={(e) => setBookingDateFilter(e.target.value)}
+              data-testid="input-booking-date-filter"
+            />
+            {bookingDateFilter && (
+              <button 
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                onClick={() => setBookingDateFilter("")}
+                data-testid="button-clear-booking-date-filter"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+            <span className="text-xs text-gray-400 mt-1 block">Filter by booking date</span>
+          </div>
+        </div>
 
         <Card className="bg-rosae-dark-gray border-gray-600">
           <CardContent className="p-6">
@@ -87,7 +203,7 @@ export default function Bookings() {
               <div className="flex items-center justify-center h-64 text-gray-400">
                 Loading bookings...
               </div>
-            ) : bookings && bookings.length > 0 ? (
+            ) : filteredBookings && filteredBookings.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -104,7 +220,7 @@ export default function Bookings() {
                     </tr>
                   </thead>
                   <tbody className="text-white">
-                    {bookings.map((booking: any) => (
+                    {filteredBookings.map((booking: any) => (
                       <tr key={booking.id} className="border-b border-gray-700 hover:bg-gray-800/50" data-testid={`row-booking-${booking.id}`}>
                         <td className="py-4">
                           <div className="flex items-center">
@@ -145,6 +261,24 @@ export default function Bookings() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            ) : data && data.bookings && Array.isArray(data.bookings) && data.bookings.length > 0 && filteredBookings.length === 0 ? (
+              <div className="text-center py-16">
+                <Search className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-white mb-2">No Matching Bookings</h3>
+                <p className="text-gray-400 mb-6">Try adjusting your filters</p>
+                <Button 
+                  onClick={() => {
+                    setDateFilter("");
+                    setPhoneFilter("");
+                    setBookingDateFilter("");
+                  }}
+                  variant="outline"
+                  className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                  data-testid="button-clear-filters"
+                >
+                  Clear All Filters
+                </Button>
               </div>
             ) : (
               <div className="text-center py-16">
